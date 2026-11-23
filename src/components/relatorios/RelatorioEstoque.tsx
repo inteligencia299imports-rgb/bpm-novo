@@ -115,7 +115,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         .or(`data_venda.is.null,data_venda.gt.${lowerCutoff.toISOString()}`),
       fetchAllRange(() => supabase
         .from('avaliacoes')
-        .select('id, quanto_pede, created_at, situacao, preparacao_status')
+        .select('id, quanto_pede, created_at, situacao, preparacao_status, tipo_aquisicao, atendimento:atendimento_id(loja_id)')
         .in('situacao', ['adquirida', 'estoque', 'oficina'])),
       fetchLojaMap(),
     ]);
@@ -125,11 +125,19 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       ...(((estoqueNovasRes as any).data) || []).map((r: any) => mapEstoqueMotoNova(r, lojaMap)),
     ] as any[];
 
-    // Preparação (avaliacoes) — não depende de loja/tipo; média em dias varia por cutoff
-    const prep = (avaliacoesRes.data || []).filter((a: any) => {
-      const ps = a.preparacao_status || 'em_aberto';
-      return PREP_STATUS.includes(ps);
-    });
+    // Preparação (avaliacoes): loja = a do atendimento da avaliação (a moto ainda não está no
+    // estoque); tipo = consignada / test-ride / própria (repasse e convertida entram como própria,
+    // igual ao estoque). Média em dias varia por cutoff.
+    const prep = (avaliacoesRes.data || [])
+      .filter((a: any) => PREP_STATUS.includes(a.preparacao_status || 'em_aberto'))
+      .map((a: any) => {
+        const ta = (a.tipo_aquisicao || '').toLowerCase();
+        return {
+          ...a,
+          loja: a.atendimento?.loja_id ? (lojaMap.get(String(a.atendimento.loja_id))?.loja ?? null) : null,
+          tipo: ta === 'consignada' ? 'consignada' : ['test-ride', 'test_ride'].includes(ta) ? 'test_ride' : 'propria',
+        };
+      });
 
     setEstoqueBase(estoqueAll);
     setPrepRows(prep);
@@ -159,11 +167,16 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       }));
     }
     // Filtro de loja (cidade) — mesma lógica do RPC
-    let estoqueFiltrado = estoqueTipo.filter((m: any) => {
-      const loja = (m.loja || '').toString();
+    const passaLojaFiltro = (lojaRaw: unknown) => {
       if (filterLoja === 'todos') return true;
+      const loja = (lojaRaw || '').toString();
       return filterLoja.split(',').some((c) => matchesCidade(loja, c as CidadeFilterValue));
-    });
+    };
+    let estoqueFiltrado = estoqueTipo.filter((m: any) => passaLojaFiltro(m.loja));
+    // Em Preparação segue os filtros de loja e tipo (não os de Situação/Quitação/BIN, que são do
+    // estoque). Moto em preparação é sempre seminova: o filtro só de 0KM não traz nenhuma.
+    const tiposFiltro = filterTipo === 'todos' ? null : filterTipo.split(',');
+    const prepFiltrado = prepRows.filter((a: any) => passaLojaFiltro(a.loja) && (!tiposFiltro || tiposFiltro.includes(a.tipo)));
     // Situação, Quitação e BIN valem para os indicadores e para a listagem.
     if (filterSituacao !== 'todos') {
       const situacoes = filterSituacao.split(',');
@@ -203,10 +216,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       const bloqueio = buildBlock('bloqueio_juridico');
       const servico = buildBlock('servico');
       const indisponivel = buildBlock('indisponivel_manual');
-      const qtdPrep = prepRows.length;
-      const somaQuantoPede = prepRows.reduce((s, a) => s + (Number(a.quanto_pede) || 0), 0);
+      const qtdPrep = prepFiltrado.length;
+      const somaQuantoPede = prepFiltrado.reduce((s, a) => s + (Number(a.quanto_pede) || 0), 0);
       const mediaDiasPrep = qtdPrep > 0
-        ? Math.round(prepRows.reduce((s, a) => s + Math.max(0, (cutoffMs - new Date(a.created_at).getTime()) / 86400000), 0) / qtdPrep)
+        ? Math.round(prepFiltrado.reduce((s, a) => s + Math.max(0, (cutoffMs - new Date(a.created_at).getTime()) / 86400000), 0) / qtdPrep)
         : 0;
       return {
         total,
