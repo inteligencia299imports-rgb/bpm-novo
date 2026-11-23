@@ -1,14 +1,23 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import type { EtapaVenda, EtapaVendaKey } from '@/lib/etapasVenda';
+/** Etapa da barra (venda ou compra). */
+export interface EtapaProcesso {
+  key: string;
+  label: string;
+  concluida: boolean;
+  /** Etapa travada: rótulo da etapa pendente que precisa ser concluída antes. */
+  aguardando: string | null;
+  /** Dias desde a venda/aquisição até a conclusão; null = pendente ou sem data. */
+  dias: number | null;
+}
 
-interface Props {
-  etapas: EtapaVenda[];
+interface Props<K extends string> {
+  etapas: (EtapaProcesso & { key: K })[];
   /** Etapa cuja tela está aberta abaixo da barra. */
-  selecionada: EtapaVendaKey;
-  onSelect: (key: EtapaVendaKey) => void;
+  selecionada: K;
+  onSelect: (key: K) => void;
   /** Etapas que não abrem (ficam só como indicador), com o motivo. */
-  bloqueadas?: Map<EtapaVendaKey, string>;
+  bloqueadas?: Map<K, string>;
   loading?: boolean;
 }
 
@@ -36,7 +45,7 @@ const clipSeta = (primeira: boolean) =>
  * verde = concluída, cinza = pendente. Abaixo do nome, nas concluídas, os dias
  * da marcação da venda até a conclusão.
  */
-const EtapasVendaBar: React.FC<Props> = ({ etapas, selecionada, onSelect, bloqueadas, loading }) => (
+const EtapasVendaBar = <K extends string>({ etapas, selecionada, onSelect, bloqueadas, loading }: Props<K>) => (
   // py-2: a barra rola na horizontal e sem esse respiro a sombra seria cortada.
   <div className="overflow-x-auto scrollbar-hide -mx-1 px-1 py-2">
     <svg width="0" height="0" className="absolute" aria-hidden="true">
@@ -73,11 +82,6 @@ const EtapasVendaBar: React.FC<Props> = ({ etapas, selecionada, onSelect, bloque
                 type="button"
                 disabled={bloqueada}
                 onClick={bloqueada ? undefined : () => onSelect(e.key)}
-                title={[
-                  `${e.label} — ${e.concluida ? 'concluída' : 'pendente'}`,
-                  e.dias != null && `concluída ${textoDias(e.dias)} após a venda`,
-                  motivoBloqueio,
-                ].filter(Boolean).join(' · ')}
                 className={cn('relative block w-full h-12', bloqueada && 'cursor-default')}
                 style={{ clipPath: clip, backgroundColor: bloqueada ? FUNDO_BLOQUEADA : FUNDO_DESBLOQUEADA }}
               >

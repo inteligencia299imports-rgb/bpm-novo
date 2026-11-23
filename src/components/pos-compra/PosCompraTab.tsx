@@ -8,9 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X, ShoppingCart, Filter } from 'lucide-react';
 import { POS_COMPRA_COLUMNS } from '@/types/crm';
+
+const KANBAN_COLUMNS = [
+  { value: 'em_aberto' as const, label: 'Em Aberto', hex: '#2EC5FF' },
+  ...POS_COMPRA_COLUMNS.filter(c => c.value !== 'aguardando_aprovacao' && c.value !== 'aprovada'),
+];
 import type { PosCompraStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
-import AvaliacaoForm from '@/components/avaliacoes/AvaliacaoForm';
+import CompraProcessoView from '@/components/compras/CompraProcessoView';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
@@ -21,9 +26,11 @@ import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 interface PosCompraTabProps {
   initialAvaliacaoId?: string | null;
   onInitialHandled?: () => void;
+  onNavigateToPreparacao?: (avaliacaoId: string) => void;
+  onNavigateToNps?: () => void;
 }
 
-const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProps = {}) => {
+const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled, onNavigateToPreparacao, onNavigateToNps }: PosCompraTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -119,10 +126,13 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
   }, [search, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-  const columnOf = (a: any): PosCompraStatus => {
-    if (a.aprovacao_status === 'aguardando') return 'aguardando_aprovacao';
-    const s = a.pos_compra_status || 'aprovada';
-    return s === 'em_aberto' ? 'aprovada' : s;
+  // Sem colunas de aprovação desde 2026-11-22 (pedido do usuário): a aprovação
+  // fica em Avaliações (coluna Aguardando Aprovação). Aguardando não aparece
+  // aqui; aprovada e ainda sem andamento fica em Em Aberto.
+  const columnOf = (a: any): PosCompraStatus | null => {
+    if (a.aprovacao_status === 'aguardando') return null;
+    const s = a.pos_compra_status || 'em_aberto';
+    return s === 'aprovada' || s === 'aguardando_aprovacao' ? 'em_aberto' : s;
   };
   const getColumnItems = (status: PosCompraStatus) => items.filter((a: any) => {
     if (a.situacao === 'perdido' || a.situacao === 'dispensada') return false;
@@ -134,7 +144,17 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
     return true;
   });
 
-  if (selectedItem) return <AvaliacaoForm avaliacaoId={selectedItem.id} context="pos_compra" onClose={() => { setSelectedItem(null); fetchItems(); }} />;
+  if (selectedItem) {
+    return (
+      <CompraProcessoView
+        avaliacaoId={selectedItem.id}
+        contextoBase="pos_compra"
+        onClose={() => { setSelectedItem(null); fetchItems(); }}
+        onNavigateToPreparacao={onNavigateToPreparacao}
+        onNavigateToNps={onNavigateToNps}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -157,11 +177,11 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
       </FiltersPanel>
 
       {loading ? (
-        <KanbanSkeleton columns={6} />
+        <KanbanSkeleton columns={5} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-6">
-            {POS_COMPRA_COLUMNS.map(col => {
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
+            {KANBAN_COLUMNS.map(col => {
               const colItems = getColumnItems(col.value);
               return (
                 <div key={col.value} className="w-[300px] shrink-0 md:w-auto md:shrink flex flex-col">

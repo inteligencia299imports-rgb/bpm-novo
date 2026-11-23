@@ -63,6 +63,12 @@ interface Props {
    * - 'consignacao' : detalhe da Consignação (com gerar contrato, sem aprovação)
    */
   context?: 'avaliacao' | 'pos_compra' | 'consignacao';
+  /** Abre a Proposta (contrato) ou o checklist do Processo ao carregar — barra de etapas da compra. */
+  acaoInicial?: 'contrato' | 'processo';
+  /** Rola a página inteira em vez de só o conteúdo (cabeçalho não fica congelado). */
+  rolagemNaPagina?: boolean;
+  /** Barra de etapas: só os botões da etapa aberta (Proposta e/ou Processo). Sem a prop, todos. */
+  botoesEtapa?: ('proposta' | 'processo')[];
 }
 
 const formatPhone = (value: string): string => {
@@ -126,7 +132,9 @@ const CurrencyField = ({ label, value, onChange, opcional, disabled }: { label: 
   </div>
 );
 
-const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avaliacao' }) => {
+const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avaliacao', acaoInicial, rolagemNaPagina, botoesEtapa }) => {
+  const mostraBotao = (b: 'proposta' | 'processo') => !botoesEtapa || botoesEtapa.includes(b);
+  const AreaRolagem = rolagemNaPagina ? 'div' : ScrollArea;
   const { user, role, userName } = useAuth();
   const ehProcesso = context !== 'avaliacao';
   const [loading, setLoading] = useState(true);
@@ -748,6 +756,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     if (!motivo) { toast.error('Informe o motivo'); return; }
     if (aprovacaoPopup.modo === 'perdido') {
       if (!podeMarcarPerdido) { toast.error('Você não tem permissão para marcar como perdido'); return; }
+    } else if (aprovacaoPopup.modo === 'desaprovar') {
+      // Desaprovar: masters e gerentes (pedido do usuário, 2026-11-22).
+      if (role !== 'master' && role !== 'gerente') { toast.error('Você não tem permissão para desaprovar'); return; }
     } else if (!podeAprovar(user?.id)) {
       toast.error('Você não tem permissão para aprovar/recusar');
       return;
@@ -1043,6 +1054,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     setObsMotaAquisicao('');
     setIsConvertendo(false);
   };
+
+  // Barra de etapas da compra: abre a Proposta ou o Processo uma vez, ao carregar.
+  const acaoInicialFeita = React.useRef(false);
+  useEffect(() => {
+    if (!acaoInicial || loading || !avaliacao || acaoInicialFeita.current) return;
+    acaoInicialFeita.current = true;
+    const consig = isTipoConsignada(avaliacao.tipo_aquisicao);
+    if (acaoInicial === 'contrato') {
+      if (consig) setContratoConsignacaoOpen(true); else setContratoCompraOpen(true);
+    } else if (context === 'consignacao') setProcessoConsignacaoOpen(true);
+    else if (context === 'pos_compra') setProcessoPosCompraOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acaoInicial, loading, avaliacao]);
 
   if (loading) {
     return <DetailSkeleton onClose={onClose} cards={6} />;
@@ -1391,7 +1415,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               </>
             )}
             {/* Desaprovar: só depois de já aprovada, e só até a NF-e sair em produção. */}
-            {precisaAprovacao && souAprovador && apSt === 'aprovada' && !nfeEmitidaProducao && (
+            {precisaAprovacao && (role === 'master' || role === 'gerente') && apSt === 'aprovada' && !nfeEmitidaProducao && (
               <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'desaprovar', motivo: '' })} className="gap-1.5 border-amber-500 text-amber-600 hover:bg-amber-500/10 hover:text-amber-600">
                 <RotateCw className="h-4 w-4" /> Desaprovar
               </Button>
@@ -1406,22 +1430,22 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             {ehProcesso ? (
               liberadoProcesso && (
                 <>
-                  {context === 'pos_compra' && (
+                  {context === 'pos_compra' && mostraBotao('processo') && (
                     <Button size="sm" variant="outline" onClick={() => setProcessoPosCompraOpen(true)} className="gap-1.5">
                       <ClipboardList className="h-4 w-4" /> Processo
                     </Button>
                   )}
-                  {context === 'consignacao' && (
+                  {context === 'consignacao' && mostraBotao('processo') && (
                     <Button size="sm" variant="outline" onClick={() => setProcessoConsignacaoOpen(true)} className="gap-1.5">
                       <ClipboardList className="h-4 w-4" /> Processo
                     </Button>
                   )}
-                  {context === 'consignacao' && (
+                  {context === 'consignacao' && mostraBotao('proposta') && (
                     <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
                       <FileText className="h-4 w-4" /> Proposta
                     </Button>
                   )}
-                  {context === 'pos_compra' && (
+                  {context === 'pos_compra' && mostraBotao('proposta') && (
                     <Button
                       size="sm"
                       variant="default"
@@ -1436,12 +1460,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               )
             ) : (
               <>
-                {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao === 'consignada' && (
+                {mostraBotao('proposta') && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao === 'consignada' && (
                   <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
                     <FileText className="h-4 w-4" /> Proposta
                   </Button>
                 )}
-                {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && isTipoPropria(avaliacao?.tipo_aquisicao) && (
+                {mostraBotao('proposta') && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && isTipoPropria(avaliacao?.tipo_aquisicao) && (
                   <Button
                     size="sm"
                     variant={contratoGerado ? 'default' : 'outline'}
@@ -1459,7 +1483,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
       <Separator />
 
-      <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
+      {/* Na tela com barra de etapas a página inteira rola — sem cabeçalho congelado. */}
+      <AreaRolagem className={rolagemNaPagina ? undefined : 'h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]'}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
           {/* Dados do Cliente */}
           <Card className="flex flex-col">
@@ -1930,7 +1955,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </div>
           </div>
         </div>
-      </ScrollArea>
+      </AreaRolagem>
 
       {/* Dialog de Avaliação Comercial */}
       <Dialog open={showEvalDialog} onOpenChange={setShowEvalDialog}>

@@ -101,7 +101,7 @@ const parseCurrencyValue = (value: string): number | null => {
 
 const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged, reenviarFromEstoque, onReenviarSuccess }) => {
   const { role } = useAuth();
-  const isReadOnly = role !== 'master' && role !== 'gerente';
+  const isReadOnly = role !== 'master' && role !== 'gerente' && role !== 'administrativo';
   const isInEstoque = avaliacaoData?.situacao === 'estoque';
   const isEstoqueIdle = isInEstoque && (currentStatus === 'estoque' || !currentStatus);
   const isEstoqueTracking = isInEstoque && !isEstoqueIdle;
