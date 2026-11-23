@@ -154,7 +154,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       estoqueTipo = estoqueTipo.filter((m: any) => tipos.some((t) => {
         const tipo = tipoExibicaoEstoque(m);
         if (t === 'test_ride' || t === '0km') return tipo === t;
-        // Próprias = própria/repasse/convertida (m.tipo já agrupa); test-ride seminova fica só em Test-Ride.
+        // Próprias = própria/repasse/convertida (m.tipo já agrupa) + Test-Ride (0km ou seminova): test-ride
+        // conta como seminova própria (pedido do usuário, 2026-11-24) e continua sozinha em Test-Ride.
+        if (t === 'propria' && tipo === 'test_ride') return true;
         return tipo !== 'test_ride' && m.tipo === t;
       }));
     }
