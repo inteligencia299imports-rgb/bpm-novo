@@ -18,6 +18,8 @@ import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import AtendimentoCard from './AtendimentoCard';
+import VendaProcessoView from '@/components/vendas/VendaProcessoView';
+import { nfeTagFromRows, type NfeTag } from '@/lib/nfeTag';
 import AtendimentoDetail from './AtendimentoDetail';
 import AtendimentoForm from './AtendimentoForm';
 import { toast } from 'sonner';
@@ -29,16 +31,34 @@ import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 // depende de tudo isso; recarregar só parte dele esvazia os cards da tela.
 const ATENDIMENTO_SELECT = `*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`;
 
-const KANBAN_COLUMNS = SITUACOES_SHOWROOM;
+// A coluna Dispensada deu lugar a Aguardando Aprovação + Vendido (pedido do
+// usuário, 2026-11-22): a venda abre o atendimento com a barra de etapas
+// (VendaProcessoView). Venda ainda não aprovada pelo master (aguardando ou
+// recusada) fica em Aguardando Aprovação; venda com a entrega da moto
+// concluída sai do kanban.
+const TAG_ATPV: NfeTag = { label: 'ATPV-e', className: 'bg-emerald-600 hover:bg-emerald-700 text-white' };
+
+type ColunaShowroom = SituacaoShowroom | 'aguardando_aprovacao';
+const KANBAN_COLUMNS: { value: ColunaShowroom; label: string; hex: string }[] = [
+  ...SITUACOES_SHOWROOM.filter(s => s.value !== 'dispensada' && s.value !== 'perdido'),
+  { value: 'aguardando_aprovacao', label: 'Aguardando Aprovação', hex: '#6B7280' },
+  { value: 'vendido', label: 'Vendido', hex: '#169d53' },
+  ...SITUACOES_SHOWROOM.filter(s => s.value === 'perdido'),
+];
+const colunaDe = (a: Atendimento): ColunaShowroom =>
+  a.situacao === 'vendido' && (a as any).venda_aprovacao_status !== 'aprovada' ? 'aguardando_aprovacao' : a.situacao;
 
 interface ShowroomTabProps {
   initialAtendimentoId?: string | null;
   onInitialAtendimentoHandled?: () => void;
+  onNavigateToNps?: () => void;
+  onNavigateToPosCompra?: (avaliacaoId: string) => void;
 }
 
-const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: ShowroomTabProps = {}) => {
+const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled, onNavigateToNps, onNavigateToPosCompra }: ShowroomTabProps = {}) => {
   const { user, role } = useAuth();
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
+  const [tagsVendido, setTagsVendido] = useState<Record<string, NfeTag | null>>({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -91,7 +111,8 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
 
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
-    const statuses = KANBAN_COLUMNS.map(c => c.value);
+    // Situações simples (uma coluna = uma situação); vendido é tratado à parte.
+    const statuses = ['em_aberto', 'pendente', 'sinal', 'perdido'];
 
     // Filtro de cidade precisa entrar na query (não só depois, em memória) —
     // senão o .limit(50) por status corta atendimentos de outras lojas ANTES
@@ -108,14 +129,14 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       lojaIdsCidade = (lojaRows || []).map((r: any) => r.id);
     }
 
-    const buildQuery = (status?: string) => {
-      let q = supabase.from('atendimentos_motos').select(ATENDIMENTO_SELECT);
+    const buildQuery = (status?: string, select: string = ATENDIMENTO_SELECT, limitar = true) => {
+      let q = supabase.from('atendimentos_motos').select(select);
       if (status) q = q.eq('situacao', status);
       if (filterInteresse !== 'todos') q = q.eq('interesse', filterInteresse);
       if (filterTemperatura !== 'todos') q = q.eq('temperatura', filterTemperatura);
       if (lojaIdsCidade) q = q.in('loja_id', lojaIdsCidade);
       q = q.order('created_at', { ascending: false });
-      if (!isSearching && status) q = q.limit(PER_STATUS_LIMIT);
+      if (!isSearching && status && limitar) q = q.limit(PER_STATUS_LIMIT);
       // Vendedores sempre veem apenas seus próprios atendimentos
       if (role === 'vendedor') {
         q = q.eq('vendedor_id', user!.id);
@@ -126,6 +147,11 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       if (dateTo) q = q.lte('created_at', dateTo.toISOString());
       return q;
     };
+
+    // Vendas com a entrega da moto concluída saem do kanban.
+    const entregaRes = await fetchAllRange<any>(() => supabase.from('pos_venda_processos')
+      .select('atendimento_id').eq('etapa', 'ENTREGA DA MOTO').eq('concluida', true));
+    const entregues = new Set(((entregaRes.data as any[]) || []).map((r) => r.atendimento_id));
 
     let data: any[];
     let error: any;
@@ -138,10 +164,26 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       error = result.error;
       data = result.data || [];
     } else {
-      const results = await Promise.all(statuses.map(s => buildQuery(s)));
-      error = results.find(r => r.error)?.error;
-      data = results.flatMap(r => r.data || []);
+      // Vendido: lista leve de todos (filtros aplicados), tira os entregues e só
+      // então pega os 50 mais recentes de cada coluna — senão o limit cortaria
+      // vendas em andamento atrás de vendas já entregues.
+      const [results, vendidosRes] = await Promise.all([
+        Promise.all(statuses.map(s => buildQuery(s))),
+        fetchAllRange<any>(() => buildQuery('vendido', 'id, venda_aprovacao_status', false)),
+      ]);
+      const emAndamento = ((vendidosRes.data as any[]) || []).filter((v) => !entregues.has(v.id));
+      const idsVendidos = [
+        ...emAndamento.filter((v) => v.venda_aprovacao_status !== 'aprovada').slice(0, PER_STATUS_LIMIT),
+        ...emAndamento.filter((v) => v.venda_aprovacao_status === 'aprovada').slice(0, PER_STATUS_LIMIT),
+      ].map((v) => v.id);
+      const vendidosFull = idsVendidos.length
+        ? await buildQuery('vendido', ATENDIMENTO_SELECT, false).in('id', idsVendidos)
+        : { data: [] as any[], error: null };
+      error = results.find(r => r.error)?.error || vendidosRes.error || vendidosFull.error;
+      data = [...results.flatMap(r => r.data || []), ...(vendidosFull.data || [])];
     }
+    // Busca: mesma regra — venda entregue não volta para o kanban.
+    data = (data || []).filter((a: any) => !(a.situacao === 'vendido' && entregues.has(a.id)));
     if (error) {
       toast.error('Erro ao carregar atendimentos');
       console.error(error);
@@ -222,6 +264,34 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
         results = results.filter(a => matchesCidade((a as any).loja, filterCidade));
       }
       setAtendimentos(results);
+
+      // Coluna Vendido: tag de NF-e / ATPV-e no lugar da tag de interesse.
+      // ATPV-e (0km: RENAVE; seminova própria: saída RENAVE) vence a NF-e,
+      // que é a etapa anterior — mesmo critério do card do Pós-Venda.
+      const idsVendido = results.filter((a) => colunaDe(a) === 'vendido').map((a) => a.id);
+      if (idsVendido.length) {
+        const [nfRes, novasRes, seminovasRes] = await Promise.all([
+          (supabase.from('nfe_entradas' as any) as any).select('atendimento_id, status, ambiente, created_at')
+            .in('atendimento_id', idsVendido).like('operacao', 'venda%'),
+          (supabase as any).from('estoque_motos_novas').select('atendimento_venda_id, renave_atpv_numero')
+            .in('atendimento_venda_id', idsVendido).not('renave_atpv_numero', 'is', null),
+          (supabase as any).from('estoque_motos').select('atendimento_venda_id, avaliacao:avaliacao_id(renave_saida_atpv_numero)')
+            .in('atendimento_venda_id', idsVendido),
+        ]);
+        const comAtpv = new Set<string>([
+          ...((novasRes.data as any[]) || []).map((e) => e.atendimento_venda_id),
+          ...((seminovasRes.data as any[]) || []).filter((e) => e.avaliacao?.renave_saida_atpv_numero).map((e) => e.atendimento_venda_id),
+        ]);
+        const nfPorAtendimento: Record<string, any[]> = {};
+        ((nfRes.data as any[]) || []).forEach((n) => { (nfPorAtendimento[n.atendimento_id] ??= []).push(n); });
+        const tags: Record<string, NfeTag | null> = {};
+        for (const id of idsVendido) {
+          tags[id] = comAtpv.has(id) ? TAG_ATPV : nfeTagFromRows(nfPorAtendimento[id]);
+        }
+        setTagsVendido(tags);
+      } else {
+        setTagsVendido({});
+      }
     }
     setLoading(false);
   }, [filterInteresse, filterTemperatura, filterVendedor, search, dateFrom, dateTo, filterCidade]);
@@ -278,6 +348,22 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     }
   };
 
+  if (detailOpen && selectedAtendimento && selectedAtendimento.situacao === 'vendido') {
+    return (
+      <VendaProcessoView
+        key={selectedAtendimento.id}
+        atendimento={selectedAtendimento}
+        onClose={() => { setDetailOpen(false); setSelectedAtendimento(null); }}
+        onEdit={handleEdit}
+        onDeleted={handleDeleted}
+        onStatusUpdated={handleStatusUpdated}
+        onNavigateToNps={onNavigateToNps}
+        onNavigateToPosCompra={onNavigateToPosCompra}
+        etapaInicial={colunaDe(selectedAtendimento) === 'aguardando_aprovacao' ? 'aprovacao' : undefined}
+      />
+    );
+  }
+
   if (detailOpen && selectedAtendimento) {
     return (
       <AtendimentoDetail
@@ -294,8 +380,8 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     return <AtendimentoForm atendimentoId={editingId} onClose={handleFormClose} />;
   }
 
-  const getColumnAtendimentos = (situacao: SituacaoShowroom) =>
-    atendimentos.filter(a => a.situacao === situacao);
+  const getColumnAtendimentos = (coluna: ColunaShowroom) =>
+    atendimentos.filter(a => colunaDe(a) === coluna);
 
   return (
     <div className="space-y-5">
@@ -425,10 +511,10 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
 
       {/* Kanban Board */}
       {loading ? (
-        <KanbanSkeleton columns={5} />
+        <KanbanSkeleton columns={6} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-6">
             {KANBAN_COLUMNS.map(col => {
               const items = getColumnAtendimentos(col.value);
               return (
@@ -453,6 +539,8 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
                           key={a.id}
                           atendimento={a}
                           onClick={() => handleCardClick(a)}
+                          statusColorOverride={col.hex}
+                          {...(col.value === 'vendido' ? { substituirInteresse: true, tagInteresse: tagsVendido[a.id] ?? null } : {})}
                         />
                       ))
                     )}

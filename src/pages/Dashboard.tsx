@@ -18,6 +18,7 @@ import PublicacoesTab from '@/components/publicacoes/PublicacoesTab';
 import RelatoriosTab from '@/components/relatorios/RelatoriosTab';
 import NovidadesTab from '@/components/novidades/NovidadesTab';
 import NpsTab from '@/components/nps/NpsTab';
+import { podeAcessarAba } from '@/lib/abasPermissao';
 
 // Abas cujo dialog de detalhe é aberto por atendimento_id direto.
 const ATENDIMENTO_KEYED_TABS = new Set(['showroom', 'pos_venda', 'intermediacao']);
@@ -128,6 +129,15 @@ const Dashboard = () => {
     setSearchParams(next, { replace: true });
   };
 
+  // Aba fora do perfil (ex.: link ?tab=pos_venda aberto por um vendedor): não
+  // monta a tela e volta para a tela inicial. Sem perfil carregado ainda, não
+  // monta nada — evita abrir a aba restrita por um instante.
+  const abaLiberada = podeAcessarAba(activeTab, role);
+  useEffect(() => {
+    if (role && !podeAcessarAba(activeTab, role)) changeTab(getDefaultTab(role));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, activeTab]);
+
   return (
     <div className="min-h-screen bg-background flex">
       <Sidebar
@@ -137,10 +147,13 @@ const Dashboard = () => {
         onToggle={() => setSidebarCollapsed(prev => !prev)}
       />
       <main className="flex-1 p-3 md:p-4 lg:p-6 animate-fade-in pb-20 md:pb-6 overflow-x-hidden">
+        {abaLiberada && (<>
         {activeTab === 'showroom' && (
           <ShowroomTab
             initialAtendimentoId={initialAtendimentoId}
             onInitialAtendimentoHandled={() => setInitialAtendimentoId(null)}
+            onNavigateToNps={() => changeTab('nps')}
+            onNavigateToPosCompra={(avaliacaoId) => handleEstoqueNav({ tab: 'pos_compra', avaliacaoId })}
           />
         )}
         {activeTab === 'estoque' && (
@@ -199,8 +212,9 @@ const Dashboard = () => {
           />
         )}
         {activeTab === 'relatorios' && <RelatoriosTab />}
-        {activeTab === 'novidades' && <NovidadesTab onNavigateToShowroom={handleNavigateToShowroom} />}
-        {activeTab === 'nps' && <NpsTab onNavigateToTab={handleEstoqueNav} />}
+        {activeTab === 'novidades' && <NovidadesTab onNavigateToShowroom={podeAcessarAba('showroom', role) ? handleNavigateToShowroom : undefined} />}
+        {activeTab === 'nps' && <NpsTab onNavigateToTab={(t) => { if (podeAcessarAba(t.tab, role)) handleEstoqueNav(t); }} />}
+        </>)}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={changeTab} />
     </div>

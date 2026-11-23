@@ -56,6 +56,10 @@ interface Props {
   onEdit: (id: string) => void;
   onDeleted: () => void;
   onStatusUpdated?: () => void;
+  /** Abre a Proposta (contrato) ou a Entrega assim que carregar — barra de etapas da venda. */
+  acaoInicial?: 'contrato' | 'entrega';
+  /** Rola a página inteira em vez de só o conteúdo (cabeçalho não fica congelado). */
+  rolagemNaPagina?: boolean;
 }
 
 const formatPhone = (value: string): string => {
@@ -101,7 +105,8 @@ const parseCurrencyInput = (value: string): number => {
   return parseInt(digits || '0', 10) / 100;
 };
 
-const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted, onStatusUpdated }) => {
+const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted, onStatusUpdated, acaoInicial, rolagemNaPagina }) => {
+  const AreaRolagem = rolagemNaPagina ? 'div' : ScrollArea;
   const { user, userName, role } = useAuth();
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<Avaliacao[]>([]);
@@ -162,7 +167,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [savingMotoEdit, setSavingMotoEdit] = useState(false);
   const { marcas: marcasCatalogo, getModelosByMarcaId } = useMarcasModelos();
 
-  const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
+  const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao)
+    ?? (atendimento.situacao === 'vendido' ? { label: 'Vendido', color: 'bg-success/15 text-success' } : undefined);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
   // Pessoa jurídica: no lugar da CNH, exige o Cartão CNPJ.
   const clientePj = ((atendimento.cliente?.cpf_cnpj || '').replace(/\D/g, '').length > 11)
@@ -833,6 +839,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (onStatusUpdated) onStatusUpdated(); else onDeleted();
   };
 
+  // Barra de etapas da venda: abre a Proposta/Entrega uma vez, com as mesmas
+  // travas dos botões do cabeçalho.
+  const acaoInicialFeita = React.useRef(false);
+  useEffect(() => {
+    if (!acaoInicial || loading || acaoInicialFeita.current) return;
+    acaoInicialFeita.current = true;
+    if (aguardandoAprovacaoAquisicao) {
+      toast.info('Aquisição da moto do cliente aguardando aprovação no Pós-Compra.');
+      return;
+    }
+    if (acaoInicial === 'contrato') setContratoOpen(true);
+    else if (vendaLiberada(atendimento)) openEntrega();
+    else toast.info('A entrega fica liberada depois da aprovação da venda.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acaoInicial, loading, aguardandoAprovacaoAquisicao]);
+
   if (loading) {
     return <DetailSkeleton onClose={onClose} />;
   }
@@ -935,7 +957,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         </div>
       )}
 
-      <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
+      {/* Na tela da venda (barra de etapas) a página inteira rola — sem cabeçalho congelado. */}
+      <AreaRolagem className={rolagemNaPagina ? undefined : 'h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]'}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
           {/* Dados do Cliente */}
           <Card className="flex flex-col">
@@ -1316,13 +1339,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               setHistory(prev => [...prev, insertedHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
                             }
                             // Notificar avaliadores
-                            await supabase.rpc('notify_role', {
-                              _role: 'gerente' as any,
-                              _title: 'Avaliação Solicitada',
-                              _message: `Nova avaliação solicitada: ${moto.marca} ${moto.modelo} ${moto.placa ? `(${moto.placa})` : ''} - Cliente: ${atendimento.cliente?.nome_razao_social} | Por: ${userName || user?.email || 'Usuário'}`,
-                              _entity_id: atendimento.id,
-                              _entity_type: 'avaliacao',
-                            });
+                            for (const _role of ['gerente', 'avaliador']) {
+                              await supabase.rpc('notify_role', {
+                                _role: _role as any,
+                                _title: 'Avaliação Solicitada',
+                                _message: `Nova avaliação solicitada: ${moto.marca} ${moto.modelo} ${moto.placa ? `(${moto.placa})` : ''} - Cliente: ${atendimento.cliente?.nome_razao_social} | Por: ${userName || user?.email || 'Usuário'}`,
+                                _entity_id: atendimento.id,
+                                _entity_type: 'avaliacao',
+                              });
+                            }
                             toast.success('Enviado para avaliação!');
                             setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, enviada_avaliacao: true } : m));
                           }}
@@ -1606,7 +1631,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             </div>
            </div>
         </div>
-      </ScrollArea>
+      </AreaRolagem>
 
       {/* Dialog de Fotos */}
       <Dialog open={!!photoMotoId} onOpenChange={async (o) => {

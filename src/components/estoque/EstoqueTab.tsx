@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ConsultaAutoria from '@/components/consulta/ConsultaAutoria';
+import { podeAcessarAba } from '@/lib/abasPermissao';
 import { SITE_URL } from '@/lib/siteMoto';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, tipoExibicaoEstoque } from '@/lib/tipoAquisicao';
@@ -432,7 +433,26 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     }
   };
 
-  const getNavigationOptions = (item: EstoqueItem) => {
+  // Atalhos do menu da moto filtrados pelo perfil (2026-11-22): some o atalho
+  // para aba sem acesso; avaliador só consulta (sem alterar preço/status,
+  // transferir, reenviar para a preparação, placa, RENAVE).
+  const ABA_DO_ATALHO: Record<string, string> = {
+    'Venda': 'showroom', 'Avaliação': 'avaliacoes', 'Pós-Venda': 'pos_venda',
+    'Intermediação 1': 'intermediacao', 'Intermediação 2': 'intermediacao',
+    'Pós-Compra': 'pos_compra', 'Consignação': 'consignacao', 'Publicação': 'publicacoes',
+    'Preparação': 'preparacao',
+  };
+  const getNavigationOptions = (item: EstoqueItem) =>
+    getNavigationOptionsBase(item).filter((opt) => {
+      const aba = ABA_DO_ATALHO[opt.label];
+      if (aba && !podeAcessarAba(aba, role)) return false;
+      if (role !== 'avaliador') return true;
+      if (['Avaliação', 'Publicação', 'Consulta', 'CRLV', 'Venda'].includes(opt.label)) return true;
+      // Preparação: só o atalho de navegação (moto em serviço), não o "reenviar".
+      return opt.label === 'Preparação' && item.status === 'servico';
+    });
+
+  const getNavigationOptionsBase = (item: EstoqueItem) => {
     const options: { label: string; icon: React.ReactNode; action: () => void }[] = [];
     const isVendedor = role === 'vendedor';
     const isOwnSale = item.venda_vendedor_id === user?.id;

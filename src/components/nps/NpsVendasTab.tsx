@@ -58,7 +58,7 @@ const NpsVendasTab = ({ onNavigateToTab }: NpsVendasTabProps) => {
         }
       }
 
-      if (role !== 'master' && role !== 'gerente') {
+      if (role !== 'master' && role !== 'gerente' && role !== 'avaliador') {
         q = q.eq('vendedor_id', user?.id || '');
       }
 

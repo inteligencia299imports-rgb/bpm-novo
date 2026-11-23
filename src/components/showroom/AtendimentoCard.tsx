@@ -19,6 +19,9 @@ interface Props {
   interesseLabelOverride?: string;
   /** Tag de status da NF-e (ver src/lib/nfeTag.ts) — badge colorido ao lado do nome. */
   nameTag?: { label: string; className?: string };
+  /** Troca a tag de interesse pela `tagInteresse` (ex.: NF-e/ATPV-e no Showroom, coluna Vendido); sem tag, não mostra nada. */
+  substituirInteresse?: boolean;
+  tagInteresse?: { label: string; className?: string } | null;
   /** Nota de NPS respondida (respostas_nps.nps) — mostrada ao lado da loja, sem ícone. */
   npsNota?: string | number | null;
 }
@@ -69,7 +72,7 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason, interesseLabelOverride, nameTag, npsNota }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason, interesseLabelOverride, nameTag, npsNota, substituirInteresse, tagInteresse }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
@@ -106,9 +109,17 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
                 title={readyReason || (readyIndicator === 'ready' ? 'Pronto para envio' : 'Pendente')}
               />
             )}
-            <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary whitespace-nowrap">
-              {interesseLabelOverride || getInteresseLabel(atendimento.interesse)}
-            </Badge>
+            {substituirInteresse ? (
+              tagInteresse && (
+                <Badge className={`text-[10px] shrink-0 whitespace-nowrap text-white ${tagInteresse.className || 'bg-primary hover:bg-primary'}`}>
+                  {tagInteresse.label}
+                </Badge>
+              )
+            ) : (
+              <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary whitespace-nowrap">
+                {interesseLabelOverride || getInteresseLabel(atendimento.interesse)}
+              </Badge>
+            )}
           </div>
 
           {/* Moto reference */}

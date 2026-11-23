@@ -925,13 +925,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         changed_by_name: userName || user?.email || null,
       } as any);
       // Notificar avaliadores
-      await supabase.rpc('notify_role', {
-        _role: 'gerente' as any,
-        _title: 'Avaliação Solicitada',
-        _message: `Nova avaliação solicitada para o atendimento | Por: ${userName || user?.email || 'Usuário'}`,
-        _entity_id: atendimentoId,
-        _entity_type: 'avaliacao',
-      });
+      for (const _role of ['gerente', 'avaliador']) {
+        await supabase.rpc('notify_role', {
+          _role: _role as any,
+          _title: 'Avaliação Solicitada',
+          _message: `Nova avaliação solicitada para o atendimento | Por: ${userName || user?.email || 'Usuário'}`,
+          _entity_id: atendimentoId,
+          _entity_type: 'avaliacao',
+        });
+      }
       setMotosCliente((prev) => prev.map((m) => (m.avaliacaoId === motoAvaliacaoId ? { ...m, enviada: true } : m)));
       toast.success('Moto enviada para avaliação!');
     }

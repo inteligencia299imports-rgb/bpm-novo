@@ -253,7 +253,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
               return (
                 <div
                   key={cli.atendimento_id}
-                  className="bg-card rounded-lg border border-border shadow-soft hover:shadow-card hover:bg-surface-hover transition-all cursor-pointer group overflow-hidden"
+                  className={`bg-card rounded-lg border border-border shadow-soft overflow-hidden group ${onNavigateToShowroom ? 'hover:shadow-card hover:bg-surface-hover transition-all cursor-pointer' : ''}`}
                   onClick={() => onNavigateToShowroom?.(cli.atendimento_id)}
                 >
                   <div className="flex">

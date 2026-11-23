@@ -19,7 +19,7 @@ import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 
 type Parte = 'parte1' | 'parte2';
 
-const PARTE_CONFIG = {
+export const PARTE_CONFIG = {
   parte1: {
     columns: INTERMEDIACAO_PARTE1_COLUMNS,
     statusField: 'intermediacao_parte1_status',

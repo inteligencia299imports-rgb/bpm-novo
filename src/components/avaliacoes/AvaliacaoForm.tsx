@@ -157,7 +157,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [resultadoConsulta, setResultadoConsulta] = useState<string | null>(null);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState(false);
   const [solicitandoConsulta, setSolicitandoConsulta] = useState(false);
-  const canEdit = role === 'gerente' || role === 'master' || role === 'vendedor';
+  const canEdit = role === 'gerente' || role === 'master' || role === 'vendedor' || role === 'avaliador';
   const [history, setHistory] = useState<any[]>([]);
   // NF-e de compra/consignação autorizada -> avaliação travada (destrava se cancelada).
   const { emitida: nfeEmitida, emitidaProducao: nfeEmitidaProducao, recarregar: recarregarNfe } = useNfeEmitida(avaliacao?.id, 'avaliacao');
@@ -1125,7 +1125,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   // uma decisão financeira de compra — não precisa ficar restrita ao mesmo
   // usuário único que aprova/recusa aquisições. Qualquer gerente/master que
   // acessa o Pós-Compra pode usar.
-  const podeMarcarPerdido = role === 'master' || role === 'gerente';
+  const podeMarcarPerdido = role === 'master' || role === 'gerente' || role === 'avaliador';
   // "Perdido" (abaixo do histórico) cobre consignação e própria-por-troca —
   // os dois cenários de `ehProcesso` que não passam por aprovação. Some depois
   // da avaliação já perdida/dispensada ou da NF de entrada emitida.

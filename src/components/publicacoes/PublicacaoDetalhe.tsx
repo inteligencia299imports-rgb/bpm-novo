@@ -110,7 +110,7 @@ const Destaque = ({ label, value }: { label: string; value: string }) => (
 );
 
 const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
-  const { user, userName } = useAuth();
+  const { user, userName, role } = useAuth();
   const avId = item.avaliacao.id as string;
   const [moto, setMoto] = useState<any>(null);
   const [site, setSite] = useState<any>(item.site);
@@ -195,7 +195,8 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const avisoPendencias = etapa === 'publicada' ? pendenciasSite : pendencias;
   const estoque = item.estoque;
   // Com sinal ou vendida a moto já saiu do site: a tela fica só para consulta.
-  const travada = ['sinal', 'vendido', 'retirada'].includes(estoque?.status || '');
+  // Avaliador também só consulta (perfil criado em 2026-11-22).
+  const travada = ['sinal', 'vendido', 'retirada'].includes(estoque?.status || '') || role === 'avaliador';
   const marcaLabel = MARCAS_SITE.find((m) => m.value === dados?.marca)?.label || moto?.marca;
   const precoAcao = estoque?.preco_acao ? Number(estoque.preco_acao) : null;
   const etapaAtual = ETAPAS_PUBLICACAO.find((e) => e.value === etapa);

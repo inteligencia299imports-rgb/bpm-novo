@@ -60,6 +60,10 @@ interface Props {
   };
   onStatusChanged?: (itemId: string, newStatus: string, field: string) => void;
   onNavigateToPosCompra?: (avaliacaoId: string) => void;
+  /** Abre o checklist do Processo assim que a tela carrega (barra de etapas da venda). */
+  abrirProcessoAoAbrir?: boolean;
+  /** Rola a página inteira em vez de só o conteúdo (cabeçalho não fica congelado). */
+  rolagemNaPagina?: boolean;
 }
 
 const formatPhone = (value: string): string => {
@@ -92,7 +96,8 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
   ) : null
 );
 
-const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusField = 'pos_venda_status', processoProps, onStatusChanged, onNavigateToPosCompra }) => {
+const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusField = 'pos_venda_status', processoProps, onStatusChanged, onNavigateToPosCompra, abrirProcessoAoAbrir, rolagemNaPagina }) => {
+  const AreaRolagem = rolagemNaPagina ? 'div' : ScrollArea;
   const [motosInteresse, setMotosInteresse] = useState<any[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
@@ -109,7 +114,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [showPhotosDialogConsignada, setShowPhotosDialogConsignada] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
-  const [processoOpen, setProcessoOpen] = useState(false);
+  const [processoOpen, setProcessoOpen] = useState(!!abrirProcessoAoAbrir);
   const [contratoOpen, setContratoOpen] = useState(false);
   const [entregaOpen, setEntregaOpen] = useState(false);
   const [entregaDate, setEntregaDate] = useState('');
@@ -681,7 +686,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       <Separator />
 
-      <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
+      {/* Na tela da venda (barra de etapas) a página inteira rola — sem cabeçalho congelado. */}
+      <AreaRolagem className={rolagemNaPagina ? undefined : 'h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]'}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
           {/* Dados do Cliente */}
           <Card>
@@ -1213,7 +1219,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           </Card>
 
         </div>
-      </ScrollArea>
+      </AreaRolagem>
 
       {/* Avaliação Popup */}
       <Dialog open={!!viewAvaliacaoData} onOpenChange={() => setViewAvaliacaoData(null)}>

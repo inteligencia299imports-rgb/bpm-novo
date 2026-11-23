@@ -11,7 +11,7 @@ interface NpsTabProps {
 
 const NpsTab = ({ onNavigateToTab }: NpsTabProps) => {
   const { role } = useAuth();
-  const canSeeAquisicoes = role === 'master' || role === 'gerente';
+  const canSeeAquisicoes = role === 'master' || role === 'gerente' || role === 'avaliador';
   const [subTab, setSubTab] = useState<'vendas' | 'aquisicoes'>('vendas');
 
   return (
