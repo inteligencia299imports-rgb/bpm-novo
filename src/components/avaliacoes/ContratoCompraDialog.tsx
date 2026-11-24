@@ -566,6 +566,16 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       dataContrato: dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : '-',
       temAcessorios: moto?.tem_acessorios,
       acessoriosDescricao: moto?.acessorios_descricao,
+      // Moto de repasse: Contrato de Repasse com Obrigação de Pagamento (2026-11-24).
+      repasse: (avaliacao as any)?.tipo_aquisicao === 'repasse',
+      renavam: moto?.renavam || null,
+      formasPagamento: formasPagamento.map((f) => ({
+        tipo: f.tipo,
+        valor: f.valor_total,
+        numeroParcelas: f.numero_parcelas,
+        valorParcelas: f.valor_parcelas,
+        dataPagamento: f.data_pagamento,
+      })),
     };
   };
 

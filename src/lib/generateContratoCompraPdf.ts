@@ -38,7 +38,39 @@ interface ContratoCompraPdfData {
   /** Acessórios informados no card "Dados da Moto" (avaliacoes.tem_acessorios/acessorios_descricao). */
   temAcessorios?: boolean | null;
   acessoriosDescricao?: string | null;
+  /** Moto de repasse (tipo_aquisicao = 'repasse'): Contrato de Repasse com Obrigação de
+   *  Pagamento no lugar do contrato de compra — mesmos dados e assinaturas, outras cláusulas
+   *  (pedido do usuário, 2026-11-24). */
+  repasse?: boolean;
+  renavam?: string | null;
+  /** Formas de pagamento do repasse ao cliente (formas_pagamento_contrato) — Cláusula 3.2 do repasse. */
+  formasPagamento?: FormaPagamentoContrato[];
 }
+
+export interface FormaPagamentoContrato {
+  tipo: string;
+  valor: number | null;
+  numeroParcelas?: number | null;
+  valorParcelas?: number | null;
+  /** yyyy-MM-dd */
+  dataPagamento?: string | null;
+}
+
+const brlPdf = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dataBr = (iso?: string | null) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
+};
+/** "PIX: R$ 10.000,00 em 2 parcelas de R$ 5.000,00, vencimento em 01/12/2026" */
+const descreverForma = (f: FormaPagamentoContrato): string => {
+  const partes = [`${f.tipo || 'Pagamento'}: ${brlPdf(Number(f.valor || 0))}`];
+  if ((f.numeroParcelas || 0) > 1) {
+    partes[0] += ` em ${f.numeroParcelas} parcelas${f.valorParcelas ? ` de ${brlPdf(Number(f.valorParcelas))}` : ''}`;
+  }
+  const venc = dataBr(f.dataPagamento);
+  if (venc) partes.push(`${(f.numeroParcelas || 0) > 1 ? 'primeira parcela em' : 'vencimento em'} ${venc}`);
+  return partes.join(', ');
+};
 
 async function loadImage(path: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -221,11 +253,11 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData, mod
   // Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('CONTRATO DE COMPRA', pageWidth / 2, y, { align: 'center' });
+  doc.text(data.repasse ? 'CONTRATO DE REPASSE COM OBRIGAÇÃO DE PAGAMENTO' : 'CONTRATO DE COMPRA', pageWidth / 2, y, { align: 'center' });
   y += 8;
 
-  // VENDEDOR
-  sectionHeader('VENDEDOR');
+  // VENDEDOR (no repasse: REPASSADORA)
+  sectionHeader(data.repasse ? 'REPASSADORA' : 'VENDEDOR');
   setNormal();
   doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
   doc.text(`Telefone: ${data.telefone}`, marginLeft, y); y += lineHeight;
@@ -265,6 +297,101 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData, mod
     y += sectionGap;
   }
 
+  // Dados bancários do vendedor/repassadora (cliente) para o repasse.
+  const blocoDadosBancarios = (titulo: string) => {
+    const bc = data.bancoCliente;
+    const bancoLinhas: string[] = [];
+    if (bc) {
+      if (bc.banco) bancoLinhas.push(`Banco: ${bc.banco}`);
+      const contaParts: string[] = [];
+      if (bc.tipoConta) contaParts.push(`Tipo: ${bc.tipoConta}`);
+      if (bc.agencia) contaParts.push(`Agência: ${bc.agencia}`);
+      if (bc.conta) contaParts.push(`Conta: ${bc.conta}`);
+      if (contaParts.length) bancoLinhas.push(contaParts.join('   '));
+      if (bc.chavePix) bancoLinhas.push(`Chave PIX: ${bc.chavePix}`);
+      if (bc.favorecido) bancoLinhas.push(`Favorecido: ${bc.favorecido}`);
+      if (bc.cpfCnpjFavorecido) bancoLinhas.push(`CPF/CNPJ do favorecido: ${bc.cpfCnpjFavorecido}`);
+    }
+    checkPageBreak(lineHeight * (bancoLinhas.length + 2));
+    setBold();
+    doc.text(titulo, marginLeft, y);
+    y += lineHeight;
+    setNormal();
+    if (bancoLinhas.length === 0) {
+      doc.text('Não informados.', marginLeft, y);
+      y += lineHeight;
+    } else {
+      for (const ln of bancoLinhas) {
+        y = lineCheckPageBreak(y, lineHeight);
+        doc.text(ln, marginLeft, y);
+        y += lineHeight;
+      }
+    }
+    y += sectionGap;
+  };
+
+  const paragrafo = (texto: string) => {
+    setNormal();
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, texto, marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    y += sectionGap;
+  };
+
+  if (data.repasse) {
+    // ===== Contrato de Repasse com Obrigação de Pagamento (moto de repasse) =====
+    sectionHeader('RECEBEDORA');
+    paragrafo(`${empresaNome}, pessoa jurídica de direito privado, inscrita no CNPJ: ${cnpj}, com sede em ${enderecoSede}, neste ato representada na forma de seus atos constitutivos.`);
+
+    setNormal();
+    doc.text('Repassadora:', marginLeft, y); y += lineHeight;
+    paragrafo('Citada neste documento no campo "Repassadora", e assina o campo "Assinatura do cliente" ao final deste documento.');
+
+    paragrafo('Ambas conjuntamente referidas como "Partes", têm justo e contratado o presente Contrato de Repasse com Obrigação de Pagamento, que será regido pelas seguintes cláusulas e condições:');
+
+    const motoDesc = [data.marca, data.modelo].filter(Boolean).join(' ') || '-';
+    sectionHeader('CLÁUSULA 1 - OBJETO');
+    paragrafo(`1.1. A REPASSADORA se compromete a repassar à RECEBEDORA a motocicleta ${motoDesc}, RENAVAM ${data.renavam || '-'}, PLACA ${data.placa || '-'}, MODELO/ANO ${data.anoFabMod || '-'}.`);
+
+    sectionHeader('CLÁUSULA 2 - OBRIGAÇÃO DE PAGAMENTO');
+    paragrafo(`2.1. Como contrapartida ao repasse mencionado na Cláusula 1, a RECEBEDORA se compromete a efetuar o pagamento acordado à REPASSADORA, no valor de ${data.repasseCliente}, nas condições estipuladas na Cláusula 3.`);
+
+    sectionHeader('CLÁUSULA 3 - PRAZOS');
+    paragrafo('O valor total do repasse acordado será pago pela RECEBEDORA à REPASSADORA de acordo com a seguinte forma de pagamento e prazo:');
+    paragrafo(`3.1. A entrega do bem, repasse, aconteceu em ${data.dataContrato || '-'}.`);
+    const formas = (data.formasPagamento || []).filter((f) => Number(f.valor || 0) > 0);
+    if (formas.length) {
+      paragrafo('3.2. A RECEBEDORA se compromete a efetuar o pagamento do valor total do repasse da seguinte forma:');
+      y -= sectionGap;
+      for (const f of formas) {
+        const linhas = doc.splitTextToSize(`• ${descreverForma(f)}`, contentWidth - 4);
+        for (const ln of linhas) {
+          y = lineCheckPageBreak(y, lineHeight);
+          doc.text(ln, marginLeft + 4, y);
+          y += lineHeight;
+        }
+      }
+      y += sectionGap;
+    } else {
+      paragrafo('3.2. A RECEBEDORA se compromete a efetuar o pagamento do valor total do repasse nas condições comerciais descritas no campo observações deste documento.');
+    }
+    paragrafo('3.3. Os pagamentos serão realizados para a conta bancária indicada pela REPASSADORA, abaixo. A RECEBEDORA concorda em incluir o número de referência fornecido pela REPASSADORA em cada pagamento para facilitar a identificação.');
+    blocoDadosBancarios('Dados bancários da REPASSADORA:');
+    paragrafo('3.4. A REPASSADORA se reserva o direito de suspender temporariamente ou rescindir o repasse em caso de atrasos reiterados nos pagamentos, mediante notificação prévia por escrito à RECEBEDORA.');
+    paragrafo('3.5. A RECEBEDORA reconhece que a obrigação de pagamento conforme os termos deste contrato é irrevogável e independente de qualquer eventual contestação ou reclamação que possa surgir em relação ao objeto do repasse.');
+
+    sectionHeader('CLÁUSULA 4 - CONFIDENCIALIDADE');
+    paragrafo('4.1. As Partes se comprometem a manter confidenciais todas as informações relacionadas a este contrato, bem como a não divulgar a terceiros quaisquer termos, preços, condições comerciais ou outros detalhes acordados.');
+
+    sectionHeader('CLÁUSULA 5 - VIGÊNCIA E RESCISÃO');
+    paragrafo('5.1. Este contrato terá vigência a partir da data de assinatura e permanecerá em vigor até o cumprimento de todas as obrigações estipuladas na Cláusula 3, a menos que seja rescindido por acordo mútuo por escrito.');
+
+    sectionHeader('CLÁUSULA 6 - DISPOSIÇÕES GERAIS');
+    paragrafo('6.1. Este contrato substitui todos os entendimentos anteriores entre as Partes e não poderá ser modificado ou alterado, exceto por escrito e assinado por representantes autorizados de ambas as Partes.');
+    paragrafo(`6.2. Qualquer disputa decorrente deste contrato será submetida à jurisdição exclusiva dos tribunais competentes de ${cidadeAssinatura}.`);
+    setNormal();
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, 'E, por estarem assim justas e contratadas, as Partes assinam o presente contrato em igual teor e forma.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  } else {
   // COMPRADOR
   sectionHeader('COMPRADOR');
   setNormal();
@@ -291,36 +418,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData, mod
   y = drawJustifiedText(doc, 'Descrito no campo condições comerciais, assim como qualquer detalhe complementado no campo observação citada.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
   y += sectionGap;
 
-  // Dados bancários do vendedor (cliente) para o repasse.
-  const bc = data.bancoCliente;
-  const bancoLinhas: string[] = [];
-  if (bc) {
-    if (bc.banco) bancoLinhas.push(`Banco: ${bc.banco}`);
-    const contaParts: string[] = [];
-    if (bc.tipoConta) contaParts.push(`Tipo: ${bc.tipoConta}`);
-    if (bc.agencia) contaParts.push(`Agência: ${bc.agencia}`);
-    if (bc.conta) contaParts.push(`Conta: ${bc.conta}`);
-    if (contaParts.length) bancoLinhas.push(contaParts.join('   '));
-    if (bc.chavePix) bancoLinhas.push(`Chave PIX: ${bc.chavePix}`);
-    if (bc.favorecido) bancoLinhas.push(`Favorecido: ${bc.favorecido}`);
-    if (bc.cpfCnpjFavorecido) bancoLinhas.push(`CPF/CNPJ do favorecido: ${bc.cpfCnpjFavorecido}`);
-  }
-  checkPageBreak(lineHeight * (bancoLinhas.length + 2));
-  setBold();
-  doc.text('Dados bancários do VENDEDOR para repasse:', marginLeft, y);
-  y += lineHeight;
-  setNormal();
-  if (bancoLinhas.length === 0) {
-    doc.text('Não informados.', marginLeft, y);
-    y += lineHeight;
-  } else {
-    for (const ln of bancoLinhas) {
-      y = lineCheckPageBreak(y, lineHeight);
-      doc.text(ln, marginLeft, y);
-      y += lineHeight;
-    }
-  }
-  y += sectionGap;
+  blocoDadosBancarios('Dados bancários do VENDEDOR para repasse:');
 
   // CLÁUSULA TERCEIRA
   sectionHeader('CLÁUSULA TERCEIRA - DA VISTORIA E AVALIAÇÃO DO VEÍCULO');
@@ -387,6 +485,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData, mod
   setNormal();
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, 'Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já, com exclusividade, o foro da Comarca do COMPRADOR, por mais privilegiado que outro possa ser. O VENDEDOR, de livre e espontânea vontade, RENUNCIA ao foro previsto no artigo 101, I do Código de Defesa do Consumidor; E, para produzir seus legais efeitos, firmo o presente termo, na presença de 2 (duas) testemunhas.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  }
   // Signatures - keep entire block together on same page
   const sigBlockHeight = lineHeight * 8;
   checkPageBreak(lineHeight * 4 + sigBlockHeight);
@@ -421,7 +520,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData, mod
   doc.text(`${cidadeAssinatura}, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
   setNormal();
 
-  const fileName = `COMPRA_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
+  const fileName = `${data.repasse ? 'REPASSE' : 'COMPRA'}_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
   if (modo === 'view') {
     window.open(URL.createObjectURL(doc.output('blob')), '_blank');
   } else {
