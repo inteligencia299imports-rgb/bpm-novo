@@ -5,7 +5,8 @@ import { fetchAllRange } from '@/lib/fetchAllRange';
 import { abbreviateName, fmtInt } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart, FileSpreadsheet, FileDown } from 'lucide-react';
+import { Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart, FileSpreadsheet, FileDown, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, AreaChart, Area, ComposedChart } from 'recharts';
@@ -114,6 +115,16 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState('todos');
   const [listTab, setListTab] = useState('vendidas');
+  // Busca da listagem (Vendidas e Com Sinal): cliente, vendedor, loja, modelo ou placa.
+  const [buscaLista, setBuscaLista] = useState('');
+  const normBusca = (v: unknown) => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const casaBusca = (m: any) => {
+    const termos = normBusca(buscaLista).trim().split(/s+/).filter(Boolean);
+    if (!termos.length) return true;
+    const tipoBusca: Record<string, string> = { propria: 'propria', consignada: 'consignada', 'test-ride': 'test-ride', test_ride: 'test-ride', repasse: 'repasse', convertida: 'convertida', ducati: '0km', '0km': '0km' };
+    const alvo = normBusca([m.nomeCliente, m.vendedor, m.loja, m.modelo, m.placa, tipoBusca[m.tipo] ?? m.tipo].join(' '));
+    return termos.every((t) => alvo.includes(t));
+  };
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
   const setFilterTipo = (v: string) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
@@ -247,8 +258,10 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           valorVenda: m.valorVenda, margemOficina: m.margemOficina, abatimentos: m.abatimentos,
           margemRealizada: m.margemRealizada, pctMargemRealizada: m.pctMargemRealizada,
         };
-      });
-  }, [atendimentos, indexes, filterLoja, filterTipo, dateFrom, dateTo]);
+      })
+      .filter(casaBusca);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atendimentos, indexes, filterLoja, filterTipo, dateFrom, dateTo, buscaLista]);
 
   const motosSinal = useMemo(() => {
     if (!indexes) return [] as any[];
@@ -264,8 +277,10 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           valorVenda: m.valorVenda, margemOficina: m.margemOficina, abatimentos: m.abatimentos,
           margemRealizada: m.margemRealizada, pctMargemRealizada: m.pctMargemRealizada,
         };
-      });
-  }, [atendimentos, indexes, filterLoja, filterTipo]);
+      })
+      .filter(casaBusca);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atendimentos, indexes, filterLoja, filterTipo, buscaLista]);
 
   const chartByMonth = useMemo(() => {
     if (!indexes) return [] as any[];
@@ -573,6 +588,20 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           </div>
         </div>
         <Separator />
+        <div className="relative max-w-sm pt-2">
+          <Search className="absolute left-2.5 top-1/2 mt-1 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={buscaLista}
+            onChange={(e) => setBuscaLista(e.target.value)}
+            placeholder="Buscar cliente, vendedor, modelo ou placa"
+            className="h-9 pl-8 pr-8"
+          />
+          {buscaLista && (
+            <button type="button" onClick={() => setBuscaLista('')} title="Limpar busca" className="absolute right-2 top-1/2 mt-1 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
       <Card className={cn('overflow-hidden', LISTAGEM_NIVEL)}>
         <CardContent className={cn('pt-4', LISTAGEM_NIVEL)}>
