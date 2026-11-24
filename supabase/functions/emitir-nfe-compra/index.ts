@@ -3286,6 +3286,13 @@ Deno.serve(async (req) => {
     const tipoNatureza = (tipo === 'transferencia' || tipo === 'transferencia_saida' || tipo === 'transferencia_saida_0km') ? 'saida' : 'entrada';
     operacaoCarregada = { ...operacaoCarregada, naturezas: operacaoCarregada.naturezas.filter((n) => n.tipo === tipoNatureza) };
   }
+  // Devolução simbólica (venda/conversão de consignada): sempre 5919/6919. A mesma família
+  // tem 5918/6918 (devolução da transferência) e, com as duas ativas, o empate de regras
+  // pegaria qualquer uma.
+  if (tipo === 'devolucao_consignacao') {
+    const naturezas919 = operacaoCarregada.naturezas.filter((n) => ['5919', '6919'].includes(String(n.cfop)));
+    if (naturezas919.length) operacaoCarregada = { ...operacaoCarregada, naturezas: naturezas919 };
+  }
   // Devolução da transferência de consignada: sempre a devolução "de verdade" (5918/6918),
   // como se o cliente tivesse desistido — nunca a simbólica (5919/6919) da venda.
   if (tipo === 'devolucao_consignacao_transf') {
