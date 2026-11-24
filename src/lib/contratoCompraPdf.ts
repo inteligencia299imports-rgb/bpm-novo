@@ -34,7 +34,7 @@ export async function gerarPdfContratoCompra(avaliacaoId: string, modo: 'downloa
   const { data: avalRaw } = await supabase
     .from('avaliacoes')
     .select(`
-      id, marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, placa, km,
+      id, marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, placa, km, renavam, tipo_aquisicao,
       valor_fechamento, valor_quitacao, atendimento_id,
       atendimentos_motos!avaliacoes_atendimento_id_fkey( id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj) )
     `)
@@ -61,6 +61,11 @@ export async function gerarPdfContratoCompra(avaliacaoId: string, modo: 'downloa
   const fechamento = (aval as any).valor_fechamento ?? (contrato as any)?.valor_fechamento ?? 0;
   const quitacao = (aval as any).valor_quitacao ?? (contrato as any)?.valor_quitacao ?? 0;
   const ano = [(aval as any).ano_fabricacao, (aval as any).ano_modelo].filter(Boolean).join('/');
+  const repasse = (aval as any).tipo_aquisicao === 'repasse';
+  // Formas de pagamento do repasse ao cliente — só o contrato de repasse as lista (Cláusula 3.2).
+  const { data: formas } = repasse && (contrato as any)?.id
+    ? await supabase.from('formas_pagamento_contrato').select('tipo, valor_total, numero_parcelas, valor_parcelas, data_pagamento').eq('contrato_id', (contrato as any).id)
+    : { data: [] as any[] };
 
   await generateContratoCompraPdf({
     loja: am?.loja_empresas?.loja || null,
@@ -78,6 +83,15 @@ export async function gerarPdfContratoCompra(avaliacaoId: string, modo: 'downloa
     repasseCliente: brl(fechamento - abatimentos - quitacao),
     observacoes: (contrato as any)?.observacoes_contrato || '',
     dataContrato: fmtData((contrato as any)?.data_sinal),
+    repasse,
+    renavam: (aval as any).renavam || null,
+    formasPagamento: ((formas as any[]) || []).map((f) => ({
+      tipo: f.tipo,
+      valor: f.valor_total,
+      numeroParcelas: f.numero_parcelas,
+      valorParcelas: f.valor_parcelas,
+      dataPagamento: f.data_pagamento,
+    })),
   }, modo);
 
   return true;
