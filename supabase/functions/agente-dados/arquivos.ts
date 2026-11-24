@@ -56,7 +56,7 @@ export async function gerarPdf(titulo: string, linhas: Linha[]): Promise<Uint8Ar
     if (primeira) {
       pagina.drawText(seguro(titulo), { x: margem, y: y - 12, size: 13, font: negrito, color: rgb(0.1, 0.1, 0.1) });
       const data = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-      pagina.drawText(seguro(`${linhas.length} registros · gerado em ${data} · Inteligência 299`), { x: margem, y: y - 26, size: 8, font: fonte, color: rgb(0.4, 0.4, 0.4) });
+      pagina.drawText(seguro(`${linhas.length} registros · gerado em ${data} · Cérebro 299`), { x: margem, y: y - 26, size: 8, font: fonte, color: rgb(0.4, 0.4, 0.4) });
       y -= 40;
     }
     pagina.drawRectangle({ x: margem, y: y - alturaLinha + 3, width: util, height: alturaLinha, color: rgb(0.12, 0.16, 0.22) });

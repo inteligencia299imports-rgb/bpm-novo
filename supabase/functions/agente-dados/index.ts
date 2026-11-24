@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       if (/audio|ptt/i.test(tipo)) {
         const seg = Number(conteudo.seconds ?? conteudo.duration ?? 0);
         if (seg > MAX_AUDIO_SEG) {
-          await conversa.texto('Para áudios, o limite é de 2 minutos. Poderia enviar um áudio mais curto ou escrever a pergunta? 💼');
+          await conversa.texto('Para áudios, o limite é de 2 minutos. Poderia enviar um áudio mais curto ou escrever a pergunta?');
           await db.from('agente_dados_log').update({ pergunta: `[áudio de ${seg}s]`, erro: 'áudio acima de 2 min' }).eq('id', log.id);
           return;
         }

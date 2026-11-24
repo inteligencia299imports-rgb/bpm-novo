@@ -162,7 +162,7 @@ export async function rodarAgente(opts: {
   // "Estou levantando..." se a resposta demorar.
   let respondeu = false;
   const aviso = setTimeout(() => {
-    if (!respondeu) conversa.texto('Um momento, estou levantando essas informações. 📊').catch(() => {});
+    if (!respondeu) conversa.texto('Um momento, estou levantando essas informações.').catch(() => {});
   }, AVISO_DEMORA_MS);
 
   const messages: Anthropic.MessageParam[] = [...opts.historico, { role: 'user', content: opts.entrada }];
@@ -190,7 +190,7 @@ export async function rodarAgente(opts: {
       const textoDaVolta = resp.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('\n').trim();
 
       if (resp.stop_reason === 'refusal') {
-        r.respostaFinal = 'Não posso ajudar com esse pedido. Posso apoiar com análises e números do negócio. 💼';
+        r.respostaFinal = 'Não posso ajudar com esse pedido. Posso apoiar com análises e números do negócio.';
         break;
       }
       if (resp.stop_reason !== 'tool_use') {
@@ -243,7 +243,7 @@ export async function rodarAgente(opts: {
                 nomeArquivo(titulo, formato === 'pdf' ? 'pdf' : 'xlsx'),
                 formato === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 base64(bytes),
-                `📋 ${titulo} (${linhas.length} registros${cortado ? ', limitado a 2.000' : ''})`,
+                `${titulo} (${linhas.length} registros${cortado ? ', limitado a 2.000' : ''})`,
               );
               respondeu = true;
               r.arquivos.push({ formato, titulo, linhas: linhas.length });
@@ -269,7 +269,7 @@ export async function rodarAgente(opts: {
       messages.push({ role: 'user', content: resultados });
     }
     if (!r.respostaFinal && !botoesEnviados && !r.arquivos.length) {
-      r.respostaFinal = 'Não consegui concluir essa análise agora. Pode reformular a pergunta ou reduzir o período? 📊';
+      r.respostaFinal = 'Não consegui concluir essa análise agora. Pode reformular a pergunta ou reduzir o período?';
     }
     if (r.respostaFinal && !botoesEnviados) {
       await conversa.texto(r.respostaFinal);
