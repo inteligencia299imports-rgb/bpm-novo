@@ -36,12 +36,16 @@ async function loadImage(path: string): Promise<{ data: string; width: number; h
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
+      // Logo reduzido (máx. 600 px) e em JPEG com fundo branco — o PNG da Ducati (1920x1920)
+      // entrava bruto no PDF (~14 MB) e o gov.br recusava o arquivo para assinatura (2026-11-24).
+      const escala = Math.min(1, 600 / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = Math.max(1, Math.round(img.width * escala));
+      canvas.height = Math.max(1, Math.round(img.height * escala));
       const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0);
-      resolve({ data: canvas.toDataURL('image/png'), width: img.width, height: img.height });
+      if (ctx) { ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve({ data: canvas.toDataURL('image/jpeg', 0.85), width: img.width, height: img.height });
     };
     img.onerror = reject;
     img.src = path;
@@ -201,7 +205,7 @@ export async function generateContratoConsignantePdf(
   const cidadeAssinatura = override?.cidadeAssinatura || empresa?.uf || 'Brasília';
   const logoPath = override && isDucati ? '/logos/ducati-logo.png' : '/logos/299-logo.jpg';
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = 210;
   const pageHeight = 297;
   const marginTop = 10;
@@ -246,7 +250,7 @@ export async function generateContratoConsignantePdf(
     const aspect = logo.width / logo.height;
     const logoWidth = 30;
     const logoHeight = logoWidth / aspect;
-    doc.addImage(logo.data, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
+    doc.addImage(logo.data, 'JPEG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
     y += logoHeight + 10;
   } catch (e) {
     console.error('Erro ao carregar logo:', e);
