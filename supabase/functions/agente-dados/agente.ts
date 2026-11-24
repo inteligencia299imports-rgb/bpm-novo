@@ -7,9 +7,11 @@ import { INSTRUCOES, contextoUsuario } from './prompt.ts';
 import type { Conversa } from './whatsapp.ts';
 import { base64 } from './whatsapp.ts';
 import { gerarExcel, gerarPdf, nomeArquivo } from './arquivos.ts';
+import { gerarManual, nomeManual, type ManualSpec } from './manual.ts';
 
 const MODELO = Deno.env.get('AGENTE_MODELO') ?? 'claude-opus-5-5';
 const MAX_VOLTAS = 14; // chamadas ao modelo por pergunta
+const MAX_TOKENS = 16_000; // folga para o conteúdo de um manual
 const LINHAS_PARA_O_MODELO = 150; // amostra devolvida ao modelo (o total vai junto)
 const MAX_CHARS_RESULTADO = 60_000;
 const AVISO_DEMORA_MS = 7_000;
@@ -57,6 +59,83 @@ const ferramentas: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'gerar_manual',
+    description:
+      'Gera um manual de processo em PDF no padrão visual dos manuais do Setor de Inteligência da 299 (capa com logo, páginas 16:9, rodapé) e envia ao usuário desta conversa. Siga a estrutura da seção "Manuais em PDF". Textos aceitam **negrito**.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        titulo: { type: 'string', description: 'Título curto do manual (ex.: "Moto de repasse"). Vira "MANUAL - TITULO.pdf".' },
+        area: { type: 'string', description: 'Setores/etapas separados por " · " (rótulo da capa).' },
+        subtitulo: { type: 'string', description: '1 ou 2 frases do que o manual explica.' },
+        chips: { type: 'array', items: { type: 'string' }, maxItems: 5, description: 'Termos-chave ou caminhos (3 a 5).' },
+        paginas: {
+          type: 'array',
+          maxItems: 12,
+          description: 'Páginas depois da capa, na ordem da estrutura padrão.',
+          items: {
+            type: 'object',
+            properties: {
+              tipo: { type: 'string', enum: ['cards', 'passos', 'comparativo', 'tela', 'tabela'] },
+              rotulo: { type: 'string', description: 'Rótulo pequeno acima do título (ex.: "Visão geral").' },
+              titulo: { type: 'string' },
+              fundo: { type: 'string', enum: ['claro', 'alternativo', 'escuro'], description: 'Só para cards. "escuro" = Cuidados e dicas (última página).' },
+              cards: { type: 'array', maxItems: 6, items: { type: 'object', properties: { icone: { type: 'string' }, titulo: { type: 'string' }, texto: { type: 'string' } }, required: ['titulo', 'texto'] } },
+              passos: { type: 'array', maxItems: 7, items: { type: 'object', properties: { titulo: { type: 'string' }, texto: { type: 'string' }, tag: { type: 'string' }, cor: { type: 'string', enum: ['laranja', 'azul', 'verde', 'roxo', 'cinza', 'vermelho'] } }, required: ['titulo', 'texto'] } },
+              lados: {
+                type: 'array', maxItems: 2,
+                items: {
+                  type: 'object',
+                  properties: {
+                    nome: { type: 'string' }, cor: { type: 'string', enum: ['laranja', 'azul', 'verde', 'roxo', 'cinza', 'vermelho'] }, selo: { type: 'string' },
+                    linhas: { type: 'array', maxItems: 8, items: { type: 'object', properties: { campo: { type: 'string' }, valor: { type: 'string' } }, required: ['campo', 'valor'] } },
+                  },
+                  required: ['nome', 'linhas'],
+                },
+              },
+              tela: {
+                type: 'object',
+                description: 'Simulação da tela (quando não houver print do usuário).',
+                properties: {
+                  titulo: { type: 'string' },
+                  caminho: { type: 'string', description: 'Ex.: "Detalhe da venda › Solicitar Devolução".' },
+                  campos: {
+                    type: 'array', maxItems: 10,
+                    items: {
+                      type: 'object',
+                      properties: {
+                        tipo: { type: 'string', enum: ['campo', 'opcoes', 'tabela', 'texto', 'resumo', 'botao'] },
+                        rotulo: { type: 'string' }, valor: { type: 'string' },
+                        opcoes: { type: 'array', items: { type: 'string' } }, selecionada: { type: 'string' },
+                        colunas: { type: 'array', items: { type: 'string' } },
+                        linhas: { type: 'array', items: { type: 'array', items: { type: 'string' } } },
+                        marcador: { type: 'integer', description: 'Número da legenda que aponta para este campo.' },
+                        meia: { type: 'boolean', description: 'Dois campos seguidos com meia = true ficam lado a lado.' },
+                      },
+                      required: ['tipo'],
+                    },
+                  },
+                },
+              },
+              usar_imagem: { type: 'boolean', description: 'Usar o print de tela que o usuário enviou NESTA mensagem.' },
+              marcadores: {
+                type: 'array', maxItems: 9, description: 'Marcadores sobre o print (x e y em % da largura/altura da imagem).',
+                items: { type: 'object', properties: { numero: { type: 'integer' }, x: { type: 'number' }, y: { type: 'number' } }, required: ['numero', 'x', 'y'] },
+              },
+              legenda: { type: 'array', maxItems: 7, items: { type: 'object', properties: { titulo: { type: 'string' }, texto: { type: 'string' } }, required: ['titulo', 'texto'] } },
+              colunas: { type: 'array', maxItems: 6, items: { type: 'string' } },
+              coluna_tag: { type: 'integer', description: 'Índice (0 = primeira) da coluna exibida como etiqueta colorida.' },
+              linhas: { type: 'array', maxItems: 60, items: { type: 'object', properties: { celulas: { type: 'array', items: { type: 'string' } }, cor: { type: 'string', enum: ['laranja', 'azul', 'verde', 'roxo', 'cinza', 'vermelho'] } }, required: ['celulas'] } },
+              nota: { type: 'object', properties: { destaque: { type: 'string' }, texto: { type: 'string' } }, required: ['texto'], description: 'Faixa de destaque no fim da página.' },
+            },
+            required: ['tipo', 'rotulo', 'titulo'],
+          },
+        },
+      },
+      required: ['titulo', 'area', 'subtitulo', 'paginas'],
+    },
+  },
+  {
     name: 'consumo_do_agente',
     description:
       'Consumo e gastos DESTE agente (perguntas, tokens e custo estimado em US$), por período e opcionalmente por usuário. É a única fonte para perguntas sobre consumo de tokens, custos ou gastos de IA.',
@@ -88,6 +167,8 @@ export interface ResultadoAgente {
   respostaFinal: string;
   consultas: { objetivo?: string; sql: string; linhas?: number; erro?: string; ms: number }[];
   arquivos: { formato: string; titulo: string; linhas: number }[];
+  /** Conteúdo do último manual gerado (vai para o histórico, para ajustes depois). */
+  manual?: ManualSpec;
   tokensEntrada: number;
   tokensSaida: number;
   tokensCacheLeitura: number;
@@ -177,7 +258,7 @@ export async function rodarAgente(opts: {
     for (let volta = 0; volta < MAX_VOLTAS; volta++) {
       const resp = await client.messages.create({
         model: MODELO,
-        max_tokens: 8000,
+        max_tokens: MAX_TOKENS,
         system,
         tools: ferramentas,
         messages,
@@ -252,6 +333,21 @@ export async function rodarAgente(opts: {
               r.arquivos.push({ formato, titulo, linhas: linhas.length });
               resultados.push({ type: 'tool_result', tool_use_id: bloco.id, content: `Arquivo ${formato.toUpperCase()} enviado com ${linhas.length} registros${cortado ? ' (limitado a 2.000)' : ''}.` });
             }
+          } else if (bloco.name === 'gerar_manual') {
+            const spec = inp as ManualSpec;
+            if (!spec?.titulo || !Array.isArray(spec.paginas) || !spec.paginas.length) throw new Error('manual sem título ou sem páginas');
+            // Print de tela enviado nesta mensagem (para a página "tela" com usar_imagem).
+            const img = opts.entrada.find((b) => b.type === 'image') as any;
+            const imagem = img?.source?.type === 'base64'
+              ? { bytes: Uint8Array.from(atob(img.source.data), (c) => c.charCodeAt(0)), tipo: String(img.source.media_type) }
+              : undefined;
+            const bytes = await gerarManual(spec, imagem);
+            const nome = nomeManual(spec.titulo);
+            await conversa.documento(nome, 'application/pdf', base64(bytes), nome.replace(/\.pdf$/, ''));
+            respondeu = true;
+            r.manual = spec;
+            r.arquivos.push({ formato: 'manual', titulo: spec.titulo, linhas: spec.paginas.length + 1 });
+            resultados.push({ type: 'tool_result', tool_use_id: bloco.id, content: `Manual enviado (${spec.paginas.length + 1} páginas). Responda só com uma frase curta de confirmação, sem repetir o conteúdo.` });
           } else if (bloco.name === 'consumo_do_agente') {
             const c = await consumoDoAgente(db, inp);
             resultados.push({ type: 'tool_result', tool_use_id: bloco.id, content: JSON.stringify(c) });

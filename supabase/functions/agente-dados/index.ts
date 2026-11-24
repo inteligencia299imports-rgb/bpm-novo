@@ -152,7 +152,14 @@ Deno.serve(async (req) => {
 
       await db.from('agente_dados_mensagens').insert([
         { chave_telefone: chave, papel: 'user', conteudo: { texto: pergunta.slice(0, 4000) } },
-        { chave_telefone: chave, papel: 'assistant', conteudo: { texto: (r.respostaFinal || (r.arquivos.length ? `[arquivo enviado: ${r.arquivos.map((a) => a.titulo).join(', ')}]` : '')).slice(0, 4000) } },
+        {
+          chave_telefone: chave, papel: 'assistant',
+          conteudo: {
+            texto: (r.respostaFinal || (r.arquivos.length ? `[arquivo enviado: ${r.arquivos.map((a) => a.titulo).join(', ')}]` : '')).slice(0, 4000)
+              // Conteúdo do manual gerado: o agente consegue ajustar depois sem refazer do zero.
+              + (r.manual ? `\n[manual enviado; conteúdo usado: ${JSON.stringify(r.manual).slice(0, 30_000)}]` : ''),
+          },
+        },
       ]);
       await db.from('agente_dados_log').update({
         pergunta: pergunta.slice(0, 4000),
