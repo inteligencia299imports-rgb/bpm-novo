@@ -111,18 +111,24 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
   // da conversão pela Intermediação.
   const [valorFechamento, setValorFechamento] = useState('');
   const [abatimentos, setAbatimentos] = useState(0);
+  // Consignada (2026-11-24): NF de consignação vigente (a última autorizada) — a
+  // transferência devolve ESSA consignação ao cliente e o destino emite uma nova.
+  const [consigVigente, setConsigVigente] = useState<{ id: string; created_at: string; empresa_id: string | null } | null>(null);
+  // Transferência já concluída: "Nova transferência" volta os dois passos ao início.
+  const [novaTransferencia, setNovaTransferencia] = useState(false);
   useEffect(() => {
     if (!open || !entityId) return;
     if (eh0km) { setModoConsignado(false); return; }
     let cancel = false;
     setModoConsignado(null);
+    setNovaTransferencia(false);
     Promise.all([
       supabase.from('avaliacoes').select('tipo_aquisicao, valor_fechamento').eq('id', entityId).maybeSingle(),
       (supabase as any).from('nfe_entradas').select('id').eq('avaliacao_id', entityId).eq('operacao', 'compra')
         .eq('status', 'processada').eq('ambiente', 'producao').is('transferencia_destino_loja_id', null).limit(1).maybeSingle(),
       (supabase as any).from('nfe_entradas').select('id').eq('avaliacao_id', entityId).eq('operacao', 'transferencia_saida')
         .eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle(),
-      (supabase as any).from('nfe_entradas').select('ambiente').eq('avaliacao_id', entityId).eq('operacao', 'consignacao')
+      (supabase as any).from('nfe_entradas').select('id, ambiente, created_at, empresa_id').eq('avaliacao_id', entityId).eq('operacao', 'consignacao')
         .eq('status', 'processada').order('created_at', { ascending: false }).limit(1).maybeSingle(),
       buscarAbatimentosCliente(entityId),
     ]).then(([{ data: av }, { data: compraPropria }, { data: saidaComum }, { data: consig }, abat]: any[]) => {
@@ -130,6 +136,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
       setModoConsignado(av?.tipo_aquisicao === 'consignada' && !compraPropria && !saidaComum);
       setEhConsignada(['consignada', 'convertida'].includes(av?.tipo_aquisicao));
       setConsignacaoAmbiente(consig?.ambiente ?? null);
+      setConsigVigente(consig ? { id: consig.id, created_at: consig.created_at, empresa_id: consig.empresa_id } : null);
       const fech = Number(av?.valor_fechamento ?? 0);
       setValorFechamento(fech > 0 ? formatCurrencyInput(String(Math.round(fech * 100))) : '');
       setAbatimentos(Number(abat) || 0);
@@ -137,10 +144,32 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
     return () => { cancel = true; };
   }, [open, entityId, eh0km]);
 
-  const tipoSaida = eh0km ? 'transferencia_saida_0km' : modoConsignado ? 'devolucao_consignacao' : 'transferencia_saida';
-  const tipoEntrada = eh0km ? 'transferencia_entrada_0km' : modoConsignado ? 'compra' : 'transferencia_entrada';
-  const saida = useNfeCompra(entityId, open, tipoSaida, eh0km ? 'estoque_moto_nova' : 'avaliacao');
-  const entrada = useNfeCompra(entityId, open, tipoEntrada, eh0km ? 'estoque_moto_nova' : 'avaliacao', onSuccess);
+  // Consignada (pedido do usuário, 2026-11-24): devolução ao cliente (5918/6918) pela
+  // empresa que está com a consignação + NOVA NF de consignação pela loja de destino,
+  // como se o cliente tivesse desistido na loja 1 e consignado na loja 2. Vale para
+  // qualquer destino, inclusive empresa de CNPJ diferente; a moto continua consignada.
+  const tipoSaida = eh0km ? 'transferencia_saida_0km' : modoConsignado ? 'devolucao_consignacao_transf' : 'transferencia_saida';
+  const tipoEntrada = eh0km ? 'transferencia_entrada_0km' : modoConsignado ? 'consignacao' : 'transferencia_entrada';
+  const saidaHook = useNfeCompra(entityId, open, tipoSaida, eh0km ? 'estoque_moto_nova' : 'avaliacao');
+  const entradaHook = useNfeCompra(entityId, open, tipoEntrada, eh0km ? 'estoque_moto_nova' : 'avaliacao', onSuccess);
+
+  // Consignada: as NFs carregadas são as últimas de cada operação, que podem ser de
+  // outra rodada (a consignação ORIGINAL, uma transferência anterior). Só valem para
+  // esta transferência: a devolução posterior à consignação vigente e a nova
+  // consignação (com destino) posterior a essa devolução. Concluída = a nova
+  // consignação virou a vigente; "Nova transferência" recomeça do zero.
+  const ms = (d?: string | null) => (d ? new Date(d).getTime() : 0);
+  const transfConcluida = !!modoConsignado && !novaTransferencia
+    && !!entradaHook.nfe?.transferencia_destino_loja_id && entradaHook.nfe?.id === consigVigente?.id
+    && !!saidaHook.nfe && ms(saidaHook.nfe.created_at) < ms(entradaHook.nfe?.created_at);
+  const saidaValida = !modoConsignado || transfConcluida
+    || (!!saidaHook.nfe && ms(saidaHook.nfe.created_at) > ms(consigVigente?.created_at));
+  const entradaValida = !modoConsignado || transfConcluida
+    || (saidaValida && !!saidaHook.nfe && !!entradaHook.nfe?.transferencia_destino_loja_id
+      && ms(entradaHook.nfe.created_at) > ms(saidaHook.nfe.created_at));
+  const semNf = { nfe: null, emitida: false, pendente: false, erro: false, cancelada: false };
+  const saida = saidaValida ? saidaHook : { ...saidaHook, ...semNf };
+  const entrada = entradaValida ? entradaHook : { ...entradaHook, ...semNf };
 
   // useNfeCompra não carrega sozinho ao montar (mesmo achado do
   // TransferenciaFagMmatosDialog) — sem isso o diálogo sempre parte de "nada
@@ -264,11 +293,18 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
       .then(({ data }: any) => {
         if (cancel) return;
         const raiz = (l: any) => String(l?.empresas?.cnpj || '').replace(/\D/g, '').slice(0, 8);
-        const raizOrigem = raiz(((data as any[]) || []).find((l) => l.id === estoqueItem?.loja_id));
+        const lojaOrigem = ((data as any[]) || []).find((l) => l.id === estoqueItem?.loja_id);
+        const raizOrigem = raiz(lojaOrigem);
+        // Consignada: qualquer empresa (inclusive CNPJ diferente), menos a que já está
+        // com a consignação — devolver e reconsignar na mesma empresa não faz sentido.
+        const empresaConsignacao = consigVigente?.empresa_id || lojaOrigem?.empresa_id || null;
         const opts = ((data as any[]) || [])
-          .filter((l) => (l.id === estoqueItem?.loja_id ? !!modoConsignado : lojasPermitidas.includes(l.loja)))
-          // Consignada: só destinos da mesma empresa (mesma raiz de CNPJ).
-          .filter((l) => !ehConsignada || !raizOrigem || raiz(l) === raizOrigem)
+          .filter((l) => (modoConsignado
+            ? lojasPermitidas.includes(l.loja) && l.empresa_id !== empresaConsignacao
+            : l.id !== estoqueItem?.loja_id && lojasPermitidas.includes(l.loja)))
+          // Convertida (consignada que já virou compra pelo fluxo antigo): segue só entre
+          // lojas da mesma empresa (mesma raiz de CNPJ), como a trava do servidor.
+          .filter((l) => modoConsignado || !ehConsignada || !raizOrigem || raiz(l) === raizOrigem)
           .map((l) => ({ id: l.id, loja: l.loja, empresa_id: l.empresa_id, empresa_nome: l.empresas?.nome || '' }))
           .sort((a, b) => (a.empresa_nome + a.loja).localeCompare(b.empresa_nome + b.loja));
         setLojas(opts);
@@ -276,7 +312,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
       });
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, estoqueItem?.loja_id, eh0km, modoConsignado, ehConsignada]);
+  }, [open, estoqueItem?.loja_id, eh0km, modoConsignado, ehConsignada, consigVigente?.empresa_id]);
 
   // Pedido do usuário, 2026-09-30: a saída também cobre a moto 0km "enviada
   // como demonstração" pra outra empresa/UF (mesma operação de estoque,
@@ -361,7 +397,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
 
           <div>
             <Label className="text-xs text-muted-foreground">Empresa/loja de destino</Label>
-            <Select value={destinoLojaId} onValueChange={setDestinoLojaId} disabled={(modoConsignado ? entradaProducao : saidaEmitida) || lojasLoading}>
+            <Select value={destinoLojaId} onValueChange={setDestinoLojaId} disabled={saidaEmitida || lojasLoading}>
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder={lojasLoading ? 'Carregando…' : 'Selecione o destino'} />
               </SelectTrigger>
@@ -371,21 +407,30 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                 ))}
               </SelectContent>
             </Select>
-            {ehConsignada && (
+            {ehConsignada && !modoConsignado && (
               <p className="text-xs text-muted-foreground mt-1">
-                Moto consignada: só pode ser transferida entre lojas da mesma empresa (mesmo CNPJ raiz — matriz e filial).
+                Moto convertida: só pode ser transferida entre lojas da mesma empresa (mesmo CNPJ raiz — matriz e filial).
               </p>
             )}
             {ehConsignada && !lojasLoading && lojas.length === 0 && (
-              <p className="text-xs text-destructive mt-1">Nenhuma loja da mesma empresa disponível como destino.</p>
+              <p className="text-xs text-destructive mt-1">Nenhuma loja disponível como destino.</p>
             )}
           </div>
 
           {modoConsignado && (
             <p className="text-xs text-muted-foreground">
-              Moto consignada: devolução da consignação (origem) seguida da compra direta pela empresa de
-              destino — a moto passa a ser própria (Convertida).
+              Moto consignada: a empresa atual devolve a moto ao cliente (CFOP 5918/6918) e a loja de destino
+              emite uma nova NF de consignação, como se o cliente tivesse consignado lá. A moto continua consignada,
+              com o mesmo contrato.
             </p>
+          )}
+          {transfConcluida && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">
+              <span className="text-emerald-700 dark:text-emerald-400">Transferência concluída: a consignação agora é da loja de destino.</span>
+              <Button size="sm" variant="outline" onClick={() => { setNovaTransferencia(true); setDestinoLojaId(''); }}>
+                Nova transferência
+              </Button>
+            </div>
           )}
 
           <Separator />
@@ -474,7 +519,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
           <Card className={!saidaProducao ? 'opacity-50 pointer-events-none' : undefined}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <ArrowRight className="h-4 w-4 text-primary" /> {modoConsignado ? '2. Compra (destino)' : '2. Entrada (destino)'}
+                <ArrowRight className="h-4 w-4 text-primary" /> {modoConsignado ? '2. Nova consignação (destino)' : '2. Entrada (destino)'}
                 {entradaEmitida && entrada.nfe?.ambiente === 'producao' && (
                   <Badge variant="outline" className="gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Autorizada
@@ -490,29 +535,13 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
               )}
               {modoConsignado && saidaProducao && !entradaProducao && !destinoLojaId && (
                 <p className="text-xs text-destructive flex items-start gap-1.5">
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" /> Escolha a empresa/loja de destino acima para emitir a compra.
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" /> Escolha a empresa/loja de destino acima para emitir a nova consignação.
                 </p>
               )}
               {modoConsignado && saidaProducao && !entradaProducao && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Valor de fechamento</Label>
-                  <div className="relative max-w-[220px]">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                    <Input
-                      className="pl-10"
-                      placeholder="0,00"
-                      inputMode="numeric"
-                      value={valorFechamento}
-                      onChange={(e) => setValorFechamento(formatCurrencyInput(e.target.value))}
-                      disabled={entrada.loading || entrada.pendente}
-                    />
-                  </div>
-                  {abatimentos > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Abatimentos do cliente: {brl(abatimentos)} — valor da NF de compra: <strong>{brl(valorCompraNf)}</strong>
-                    </p>
-                  )}
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  NF de entrada em consignação (1917/2917) pela empresa de destino, no mesmo valor da consignação atual.
+                </p>
               )}
               {saidaProducao && !entradaEmitida && vendaFechada && (
                 <p className="text-sm text-destructive flex items-start gap-1.5">
@@ -556,8 +585,8 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                   <Button
                     size="sm"
                     className="gap-1.5"
-                    disabled={entrada.loading || !destinoLojaId || fechamentoNum <= 0}
-                    onClick={() => emitirCompra('producao')}
+                    disabled={entrada.loading || !destinoLojaId}
+                    onClick={() => entrada.emitir({ ambiente: 'producao', destino_loja_id: destinoLojaId })}
                   >
                     {entrada.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : entrada.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                     {entrada.erro ? 'Tentar novamente' : 'Emitir NF-e'}
