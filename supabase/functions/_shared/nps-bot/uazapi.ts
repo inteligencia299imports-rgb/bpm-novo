@@ -147,9 +147,13 @@ export type ClienteUazapi = ReturnType<typeof cliente>;
  * Mensagem para a equipe (alertas e avisos aos gerentes). Tenta os números do robô em ordem,
  * pulando `evitar` (o número que caiu), até um conseguir enviar.
  */
+// Números que podem mandar avisos do robô. O Cérebro saiu (2026-11-24): virou o número do agente de
+// dados e não manda mais nada do robô de NPS.
+const NUMEROS_AVISO = ['comunicacao'];
+
 export async function enviarAviso(number: string, text: string, evitar?: string) {
-  const ordem = ['comunicacao', 'cerebro'].filter((i) => i !== evitar);
-  if (evitar) ordem.push(evitar);
+  const ordem = NUMEROS_AVISO.filter((i) => i !== evitar);
+  if (evitar && NUMEROS_AVISO.includes(evitar)) ordem.push(evitar);
   let erro: unknown = null;
   for (const inst of ordem) {
     if (!tokenDe(inst)) continue;
