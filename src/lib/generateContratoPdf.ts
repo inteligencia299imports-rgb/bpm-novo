@@ -177,12 +177,16 @@ async function loadImage(path: string): Promise<string> {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
+      // Logo reduzido (máx. 600 px) e em JPEG com fundo branco — o PNG da Ducati (1920x1920)
+      // entrava bruto no PDF (~14 MB) e o gov.br recusava o arquivo para assinatura (2026-11-24).
+      const escala = Math.min(1, 600 / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = Math.max(1, Math.round(img.width * escala));
+      canvas.height = Math.max(1, Math.round(img.height * escala));
       const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
+      if (ctx) { ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
     };
     img.onerror = reject;
     img.src = path;
@@ -270,7 +274,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   const isVenda = variant === 'venda';
   const is0km = templateType === 'ducati' || templateType === 'ducati_fln' || templateType === 'ducati_poa';
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = 210;
   const marginTop = 10; // 1cm
   const marginBottom = 10; // 1cm
@@ -303,7 +307,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       logoWidth = isVenda ? 24 : 30;
       logoHeight = logoWidth / aspect;
     }
-    doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
+    doc.addImage(logoData, 'JPEG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
     y += logoHeight + 10;
   } catch {
     y += 10;
