@@ -223,6 +223,45 @@ async function extrairCodigoSegurancaViaIa(pdfBase64: string, tipoDoc: 'atpv' | 
 }
 
 /**
+ * Código do município na tabela da SERPRO (Denatran, não IBGE) pelo nome do cadastro.
+ * A busca da SERPRO é por trecho do nome, mas a grafia dela pode diferir do cadastro
+ * (achado real 2026-11-24: "SANTA IZABEL DO PARA" voltava vazio). Tenta, em ordem: o nome
+ * como está, Z<->S trocados e a palavra mais longa do nome; aceita o resultado cujo nome
+ * bate (ignorando acento, Z/S e preposições) ou, na busca por palavra, o único resultado.
+ */
+async function resolverMunicipioSerpro(cidade: string, uf: string, ctx: RenaveLogCtx): Promise<number | undefined> {
+  const norm = (s: string) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const PREP = new Set(['DO', 'DA', 'DE', 'DOS', 'DAS', 'D']);
+  const chave = (s: string) => norm(s).replace(/Z/g, 'S').split(' ').filter((p) => p && !PREP.has(p)).join(' ');
+  const alvo = chave(cidade);
+  const palavras = norm(cidade).split(' ').filter((p) => p && !PREP.has(p));
+  const maisLonga = [...palavras].sort((a, b) => b.length - a.length)[0] || '';
+  const tentativas = [...new Set([
+    norm(cidade),
+    norm(cidade).replace(/Z/g, 'S'),
+    norm(cidade).replace(/S/g, 'Z'),
+    maisLonga,
+    maisLonga.replace(/Z/g, 'S'),
+    maisLonga.replace(/S/g, 'Z'),
+  ].filter((t) => t.length >= 3))];
+  let primeiroResultado: any = null;
+  for (const t of tentativas) {
+    const mun = await municipios(t, uf, ctx);
+    const lista = Array.isArray(mun.body) ? mun.body : [];
+    if (!lista.length) continue;
+    const exato = lista.find((m: any) => chave(m.nome) === alvo);
+    if (exato?.id) return Number(exato.id);
+    // Abreviações ("STA IZABEL DO PARA"): todas as palavras do cadastro, menos Santa/São, no nome.
+    const significativas = alvo.split(' ').filter((p) => !['SANTA', 'SANTO', 'SAO', 'STA', 'STO'].includes(p));
+    const contem = lista.filter((m: any) => significativas.every((p) => chave(m.nome).split(' ').includes(p)));
+    if (contem.length === 1 && contem[0]?.id) return Number(contem[0].id);
+    if (t === norm(cidade) && !primeiroResultado) primeiroResultado = lista[0];
+  }
+  // Comportamento anterior: a busca pelo nome exato trouxe algo, mas sem nome idêntico.
+  return primeiroResultado?.id ? Number(primeiroResultado.id) : undefined;
+}
+
+/**
  * Comprador da saída de estoque (0km e seminova usam o mesmo formato) a partir
  * do cliente do atendimento da venda. Resolve o município IBGE pela API da
  * SERPRO quando não vem `codigoMunicipioInformado`.
@@ -242,12 +281,11 @@ async function montarComprador(
 
   let codigoMunicipio: number | undefined = codigoMunicipioInformado || undefined;
   if (!codigoMunicipio && end.cidade && end.uf) {
-    const mun = await municipios(end.cidade, end.uf, ctx);
-    const norm = (s: string) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-    const hit = Array.isArray(mun.body) ? mun.body.find((m: any) => norm(m.nome) === norm(end.cidade)) || mun.body[0] : null;
-    if (hit?.id) codigoMunicipio = Number(hit.id);
+    codigoMunicipio = await resolverMunicipioSerpro(String(end.cidade), String(end.uf), ctx);
   }
-  if (!codigoMunicipio) return { error: 'Código IBGE do município do comprador não resolvido — informe codigo_municipio.' };
+  if (!codigoMunicipio) {
+    return { error: `Município do comprador "${end.cidade || '?'}/${end.uf || '?'}" não encontrado na tabela da SERPRO — confira a cidade no cadastro do cliente.` };
+  }
 
   const docDigits = String(cli.cpf_cnpj).replace(/\D/g, '');
   return {
