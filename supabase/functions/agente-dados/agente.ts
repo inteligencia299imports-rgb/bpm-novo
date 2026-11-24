@@ -166,16 +166,19 @@ export async function rodarAgente(opts: {
   }, AVISO_DEMORA_MS);
 
   const messages: Anthropic.MessageParam[] = [...opts.historico, { role: 'user', content: opts.entrada }];
+  // Instruções montadas UMA vez por pergunta: o começo da conversa não pode mudar entre as chamadas do
+  // loop (o raciocínio de uma chamada fica preso a esse começo; mudar o horário a cada volta dava erro 400).
+  const system: Anthropic.TextBlockParam[] = [
+    { type: 'text', text: INSTRUCOES, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: contextoUsuario(nome, rh) },
+  ];
   let botoesEnviados = false;
   try {
     for (let volta = 0; volta < MAX_VOLTAS; volta++) {
       const resp = await client.messages.create({
         model: MODELO,
         max_tokens: 8000,
-        system: [
-          { type: 'text', text: INSTRUCOES, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: contextoUsuario(nome, rh) },
-        ],
+        system,
         tools: ferramentas,
         messages,
       });
