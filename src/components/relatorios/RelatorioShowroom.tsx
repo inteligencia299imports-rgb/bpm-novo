@@ -119,7 +119,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const [buscaLista, setBuscaLista] = useState('');
   const normBusca = (v: unknown) => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const casaBusca = (m: any) => {
-    const termos = normBusca(buscaLista).trim().split(/s+/).filter(Boolean);
+    const termos = normBusca(buscaLista).trim().split(/\s+/).filter(Boolean);
     if (!termos.length) return true;
     const tipoBusca: Record<string, string> = { propria: 'propria', consignada: 'consignada', 'test-ride': 'test-ride', test_ride: 'test-ride', repasse: 'repasse', convertida: 'convertida', ducati: '0km', '0km': '0km' };
     const alvo = normBusca([m.nomeCliente, m.vendedor, m.loja, m.modelo, m.placa, tipoBusca[m.tipo] ?? m.tipo].join(' '));
