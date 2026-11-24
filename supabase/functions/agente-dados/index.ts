@@ -5,7 +5,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import type Anthropic from 'npm:@anthropic-ai/sdk@^0.121.0';
 import { conversaCom, baixarMidia, transcrever, base64 } from './whatsapp.ts';
-import { rodarAgente } from './agente.ts';
+import { rodarAgente, PRECO_AUDIO_SEG } from './agente.ts';
 import { extractText, getDocumentProxy } from 'npm:unpdf@0.12.1';
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
     const conversa = conversaCom(usuario.telefone);
     const inicio = Date.now();
     let pergunta = '';
+    let audioSeg = 0;
     try {
       // ---------- entrada: texto, botão, áudio, imagem, documento
       const entrada: Anthropic.ContentBlockParam[] = [];
@@ -69,6 +70,7 @@ Deno.serve(async (req) => {
           await db.from('agente_dados_log').update({ pergunta: `[áudio de ${seg}s]`, erro: 'áudio acima de 2 min' }).eq('id', log.id);
           return;
         }
+        audioSeg = seg;
         const t = msgId ? await transcrever(msgId) : null;
         if (!t) { await conversa.texto('Não consegui entender o áudio. Poderia repetir ou escrever a pergunta?'); return; }
         pergunta = `[áudio] ${t}`;
@@ -145,6 +147,10 @@ Deno.serve(async (req) => {
         arquivos: r.arquivos,
         tokens_entrada: r.tokensEntrada,
         tokens_saida: r.tokensSaida,
+        tokens_cache_leitura: r.tokensCacheLeitura,
+        tokens_cache_escrita: r.tokensCacheEscrita,
+        audio_segundos: audioSeg || null,
+        custo_usd: Math.round((r.custoUsd + audioSeg * PRECO_AUDIO_SEG) * 1e6) / 1e6,
         duracao_ms: Date.now() - inicio,
       }).eq('id', log.id);
     } catch (e) {
