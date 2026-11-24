@@ -5,7 +5,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import type Anthropic from 'npm:@anthropic-ai/sdk@^0.121.0';
 import { conversaCom, baixarMidia, transcrever, base64 } from './whatsapp.ts';
-import { rodarAgente } from './agente.ts';
+import { rodarAgente, PRECO_AUDIO_SEG } from './agente.ts';
+import { verificarAlertas } from './alertas.ts';
 import { extractText, getDocumentProxy } from 'npm:unpdf@0.12.1';
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
@@ -28,7 +29,20 @@ function chaveDoJid(jid: unknown): string | null {
 Deno.serve(async (req) => {
   const secret = Deno.env.get('AGENTE_WEBHOOK_SECRET');
   const url = new URL(req.url);
-  if (!secret || url.searchParams.get('key') !== secret) return new Response('não autorizado', { status: 401 });
+  const chaveRecebida = url.searchParams.get('key') ?? req.headers.get('x-agente-secret');
+  if (!secret || chaveRecebida !== secret) return new Response('não autorizado', { status: 401 });
+
+  // Verificação diária (cron): custo do mês e tamanho do banco.
+  if (url.searchParams.get('acao') === 'alertas') {
+    const dbAlertas = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    try {
+      await verificarAlertas(dbAlertas, { banco: true });
+      return new Response('ok');
+    } catch (e) {
+      console.error('alertas', e);
+      return new Response(String(e), { status: 500 });
+    }
+  }
 
   const body = await req.json().catch(() => null);
   if (!body || body.EventType !== 'messages') return ok();
@@ -57,6 +71,7 @@ Deno.serve(async (req) => {
     const conversa = conversaCom(usuario.telefone);
     const inicio = Date.now();
     let pergunta = '';
+    let audioSeg = 0;
     try {
       // ---------- entrada: texto, botão, áudio, imagem, documento
       const entrada: Anthropic.ContentBlockParam[] = [];
@@ -65,10 +80,11 @@ Deno.serve(async (req) => {
       if (/audio|ptt/i.test(tipo)) {
         const seg = Number(conteudo.seconds ?? conteudo.duration ?? 0);
         if (seg > MAX_AUDIO_SEG) {
-          await conversa.texto('Para áudios, o limite é de 2 minutos. Poderia enviar um áudio mais curto ou escrever a pergunta? 💼');
+          await conversa.texto('Para áudios, o limite é de 2 minutos. Poderia enviar um áudio mais curto ou escrever a pergunta?');
           await db.from('agente_dados_log').update({ pergunta: `[áudio de ${seg}s]`, erro: 'áudio acima de 2 min' }).eq('id', log.id);
           return;
         }
+        audioSeg = seg;
         const t = msgId ? await transcrever(msgId) : null;
         if (!t) { await conversa.texto('Não consegui entender o áudio. Poderia repetir ou escrever a pergunta?'); return; }
         pergunta = `[áudio] ${t}`;
@@ -136,7 +152,14 @@ Deno.serve(async (req) => {
 
       await db.from('agente_dados_mensagens').insert([
         { chave_telefone: chave, papel: 'user', conteudo: { texto: pergunta.slice(0, 4000) } },
-        { chave_telefone: chave, papel: 'assistant', conteudo: { texto: (r.respostaFinal || (r.arquivos.length ? `[arquivo enviado: ${r.arquivos.map((a) => a.titulo).join(', ')}]` : '')).slice(0, 4000) } },
+        {
+          chave_telefone: chave, papel: 'assistant',
+          conteudo: {
+            texto: (r.respostaFinal || (r.arquivos.length ? `[arquivo enviado: ${r.arquivos.map((a) => a.titulo).join(', ')}]` : '')).slice(0, 4000)
+              // Conteúdo do manual gerado: o agente consegue ajustar depois sem refazer do zero.
+              + (r.manual ? `\n[manual enviado; conteúdo usado: ${JSON.stringify(r.manual).slice(0, 30_000)}]` : ''),
+          },
+        },
       ]);
       await db.from('agente_dados_log').update({
         pergunta: pergunta.slice(0, 4000),
@@ -145,8 +168,14 @@ Deno.serve(async (req) => {
         arquivos: r.arquivos,
         tokens_entrada: r.tokensEntrada,
         tokens_saida: r.tokensSaida,
+        tokens_cache_leitura: r.tokensCacheLeitura,
+        tokens_cache_escrita: r.tokensCacheEscrita,
+        audio_segundos: audioSeg || null,
+        custo_usd: Math.round((r.custoUsd + audioSeg * PRECO_AUDIO_SEG) * 1e6) / 1e6,
         duracao_ms: Date.now() - inicio,
       }).eq('id', log.id);
+      // Depois de cada pergunta: avisa se o consumo do mês passou de mais um degrau (US$ 10, 20...).
+      try { await verificarAlertas(db); } catch (e) { console.error('alertas', e); }
     } catch (e) {
       console.error('agente-dados', e);
       await db.from('agente_dados_log').update({ pergunta: pergunta.slice(0, 4000), erro: String(e).slice(0, 1000), duracao_ms: Date.now() - inicio }).eq('id', log.id);
