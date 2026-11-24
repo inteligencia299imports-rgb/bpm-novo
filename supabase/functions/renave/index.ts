@@ -262,6 +262,36 @@ async function resolverMunicipioSerpro(cidade: string, uf: string, ctx: RenaveLo
 }
 
 /**
+ * Nome do comprador no limite de 40 caracteres da SERPRO. Razões sociais longas:
+ * abrevia palavras comuns, depois corta na última palavra inteira que couber,
+ * mantendo o sufixo societário (LTDA, ME, EIRELI, S/A...) no fim.
+ */
+const ABREVIACOES: Array<[RegExp, string]> = [
+  [/\bequipamentos?\b/gi, 'Equip'], [/\bmanuten[cç][aã]o\b/gi, 'Manut'],
+  [/\bcom[eé]rcio\b/gi, 'Com'], [/\bservi[cç]os?\b/gi, 'Serv'],
+  [/\bind[uú]stria\b/gi, 'Ind'], [/\bimporta[cç][aã]o\b/gi, 'Imp'],
+  [/\bexporta[cç][aã]o\b/gi, 'Exp'], [/\bdistribuidora\b/gi, 'Distrib'],
+  [/\bengenharia\b/gi, 'Eng'], [/\bparticipa[cç][oõ]es\b/gi, 'Part'],
+  [/\badministra[cç][aã]o\b/gi, 'Adm'], [/\bempreendimentos\b/gi, 'Empreend'],
+  [/\blimitada\b/gi, 'Ltda'],
+];
+function nomeAte40(nome: string, max = 40): string {
+  let n = nome.replace(/\s+/g, ' ').trim();
+  if (n.length <= max) return n;
+  for (const [re, abrev] of ABREVIACOES) n = n.replace(re, abrev);
+  n = n.replace(/\s+/g, ' ').trim();
+  if (n.length <= max) return n;
+  const m = n.match(/\s+(LTDA\.?|ME|EPP|EIRELI|S\/?A|SA)$/i);
+  const sufixo = m ? m[1] : '';
+  const corpo = m ? n.slice(0, m.index) : n;
+  const espaco = sufixo ? max - sufixo.length - 1 : max;
+  let cortado = corpo.slice(0, espaco + 1);
+  cortado = cortado.length > espaco ? cortado.slice(0, Math.max(cortado.lastIndexOf(' '), 0)) || corpo.slice(0, espaco) : cortado;
+  cortado = cortado.replace(/\s+(de|da|do|das|dos|e)$/i, '').trim();
+  return (sufixo ? `${cortado} ${sufixo}` : cortado).slice(0, max);
+}
+
+/**
  * Comprador da saída de estoque (0km e seminova usam o mesmo formato) a partir
  * do cliente do atendimento da venda. Resolve o município IBGE pela API da
  * SERPRO quando não vem `codigoMunicipioInformado`.
@@ -292,7 +322,10 @@ async function montarComprador(
     comprador: {
       tipoDocumento: docDigits.length > 11 ? 'CNPJ' : 'CPF',
       numeroDocumento: docDigits,
-      nome: cli.nome_razao_social || undefined,
+      // SERPRO rejeita nome com mais de 40 caracteres ("Nome do comprador
+      // deve conter no máximo 40 caracteres", achado real 2026-11-24, ATPV-e
+      // da Harenza Enginner Manutencao de Equipamentos Oftalmologicos Ltda).
+      nome: cli.nome_razao_social ? nomeAte40(String(cli.nome_razao_social)) : undefined,
       email: cli.email || undefined,
       endereco: {
         codigoMunicipio,
