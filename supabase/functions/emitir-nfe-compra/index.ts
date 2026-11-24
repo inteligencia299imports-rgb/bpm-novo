@@ -148,7 +148,7 @@ function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: nu
   return { bc, subst: subst ?? 0, ret };
 }
 
-type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km' | 'devolucao_compra' | 'devolucao_venda_seminova' | 'devolucao_venda_0km' | 'devolucao_transferencia' | 'devolucao_transferencia_0km';
+type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'devolucao_consignacao_transf' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km' | 'devolucao_compra' | 'devolucao_venda_seminova' | 'devolucao_venda_0km' | 'devolucao_transferencia' | 'devolucao_transferencia_0km';
 
 // Operação original -> operação de devolução (undo pós-24h, ver CancelarNfeDialog
 // no frontend). Uma NF original devolvida não conta mais como "já emitida em
@@ -156,7 +156,11 @@ type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_semi
 // NÃO inclui 'consignacao' -> 'devolucao_consignacao': essa é a devolução
 // simbólica do fluxo antigo (etapa normal da cadeia consignação -> devolução
 // -> compra -> venda, não um "desfazer" pós-24h) — não deve liberar reemissão.
+// 'consignacao' -> 'devolucao_consignacao_transf' SIM: na transferência de moto
+// consignada a loja atual devolve ao cliente (5918/6918) e a loja de destino emite
+// uma NOVA NF de consignação — a anterior, devolvida, não bloqueia a nova.
 const DEVOLUCAO_DE: Partial<Record<Operacao, Operacao>> = {
+  consignacao: 'devolucao_consignacao_transf',
   compra: 'devolucao_compra',
   venda_seminova: 'devolucao_venda_seminova',
   venda_0km: 'devolucao_venda_0km',
@@ -235,6 +239,22 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     operacaoFiscal: 'devolucao_consignacao',
     statusEntity: 'consignacao',
     statusHist: 'nfe_devolucao_consignacao_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'avaliacao',
+  },
+  // Transferência de moto consignada (pedido do usuário, 2026-11-24): a empresa que
+  // está com a consignação devolve a moto ao cliente (CFOP 5918/6918, "como se o
+  // cliente tivesse desistido") e a loja de destino emite uma NOVA NF de consignação
+  // (operação 'consignacao' com transferencia_destino_loja_id). Vale para qualquer
+  // destino, inclusive empresa de CNPJ diferente. Sem compromisso financeiro.
+  devolucao_consignacao_transf: {
+    refPrefix: 'devconsigtransf',
+    naturezaDescricao: 'Devolução de Consignação (transferência)',
+    operacaoFiscal: 'devolucao_consignacao',
+    statusEntity: 'consignacao',
+    statusHist: 'nfe_devolucao_consignacao_transf_emitida',
     avStatusField: null,
     avStatusEmAndamento: '',
     criaCompromisso: false,
@@ -1702,7 +1722,7 @@ Deno.serve(async (req) => {
   // Compra/consignação/devolução simbólica/transferência de moto seminova
   // entram no departamento "motos_seminovas" (é sempre a mesma moto usada da
   // compra — a transferência não vira "moto nova"); a de 0km fica em "motos".
-  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao' || tipo === 'transferencia' || ehTransferenciaEstoque
+  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao' || tipo === 'devolucao_consignacao_transf' || tipo === 'transferencia' || ehTransferenciaEstoque
     || tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_transferencia') ? 'motos_seminovas' : 'motos';
 
   const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
@@ -1967,6 +1987,42 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Transferência de moto consignada (2026-11-24): devolução ao cliente (5918/6918)
+  // pela empresa que está com a consignação + NOVA consignação pela loja de destino.
+  // consigAtual = NF de consignação vigente (a última autorizada): quem está com a moto.
+  let consigAtual: { id: string; empresa_id: string | null; created_at: string; transferencia_destino_loja_id: string | null } | null = null;
+  if (avaliacaoId && (tipo === 'consignacao' || tipo === 'devolucao_consignacao_transf' || tipo === 'devolucao_consignacao' || tipo === 'compra')) {
+    const { data } = await admin.from('nfe_entradas').select('id, empresa_id, created_at, transferencia_destino_loja_id')
+      .eq('avaliacao_id', avaliacaoId).eq('operacao', 'consignacao').eq('status', 'processada')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    consigAtual = (data as any) ?? null;
+  }
+  // Nova consignação da transferência: loja de destino no body (emitir) ou na própria linha.
+  let consigDestinoLojaId = '';
+  if (tipo === 'consignacao') {
+    if (acao === 'emitir') {
+      consigDestinoLojaId = destinoLojaIdBody;
+    } else {
+      const { data: consigLinha } = await admin.from('nfe_entradas').select('transferencia_destino_loja_id')
+        .eq('avaliacao_id', avaliacaoId).eq('operacao', 'consignacao')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      consigDestinoLojaId = (consigLinha as any)?.transferencia_destino_loja_id || '';
+    }
+  }
+  // Devolução da transferência: emite quem está com a consignação; consultar/cancelar
+  // usam a empresa gravada na própria linha (depois da transferência a vigente é outra).
+  let empresaDevolucaoTransf: string | null = null;
+  if (tipo === 'devolucao_consignacao_transf') {
+    if (acao === 'emitir') {
+      empresaDevolucaoTransf = consigAtual?.empresa_id ?? null;
+    } else {
+      const { data: devLinha } = await admin.from('nfe_entradas').select('empresa_id')
+        .eq('avaliacao_id', avaliacaoId).eq('operacao', 'devolucao_consignacao_transf')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      empresaDevolucaoTransf = (devLinha as any)?.empresa_id ?? null;
+    }
+  }
+
   // ---- Empresa + token Focus ----
   // Transferência de estoque: o emitente NÃO vem do atendimento original (que
   // é só o da avaliação/compra) — vem de quem hoje é dona da moto no estoque
@@ -2036,6 +2092,19 @@ Deno.serve(async (req) => {
   } else if (tipo === 'devolucao_transferencia_0km') {
     if (!emn0km?.empresa_id) return jsonResponse({ error: 'Moto 0km sem empresa vinculada.' }, 409);
     empresaId = emn0km.empresa_id;
+  } else if (tipo === 'devolucao_consignacao_transf' && empresaDevolucaoTransf) {
+    // Devolução da transferência de consignada: emitente = empresa com a consignação vigente.
+    empresaId = empresaDevolucaoTransf;
+  } else if (tipo === 'consignacao' && consigDestinoLojaId) {
+    // Nova consignação da transferência: emitente = empresa da loja de destino.
+    const { data: lojaDestinoConsig } = await admin.from('loja_empresas').select('empresa_id').eq('id', consigDestinoLojaId).maybeSingle();
+    if (!lojaDestinoConsig?.empresa_id) return jsonResponse({ error: 'Loja de destino sem empresa vinculada.' }, 400);
+    empresaId = lojaDestinoConsig.empresa_id;
+  } else if ((tipo === 'devolucao_consignacao' || (tipo === 'compra' && !compraDestinoLojaId))
+    && consigAtual?.transferencia_destino_loja_id && consigAtual.empresa_id) {
+    // Moto que chegou por transferência de consignada: a conversão (devolução simbólica +
+    // compra) é da empresa que está com a consignação vigente, não a do atendimento original.
+    empresaId = consigAtual.empresa_id;
   } else if (compraDestinoLojaId) {
     // Compra da transferência de moto consignada: emitente = empresa da loja de destino.
     const { data: lojaDestino } = await admin.from('loja_empresas').select('empresa_id').eq('id', compraDestinoLojaId).maybeSingle();
@@ -2261,7 +2330,7 @@ Deno.serve(async (req) => {
       // produção de uma transferência pode chegar por aqui (polling), não só
       // na resposta síncrona do emitir. Usa a loja gravada na própria linha
       // (transferencia_destino_loja_id), não um body que o polling não manda.
-      if (tipo === 'transferencia_entrada' || (tipo === 'compra' && compraDestinoLojaId)) {
+      if (tipo === 'transferencia_entrada' || (tipo === 'compra' && compraDestinoLojaId) || (tipo === 'consignacao' && consigDestinoLojaId)) {
         const destinoLoja = (updated?.transferencia_destino_loja_id as string) || (nfeRow.transferencia_destino_loja_id as string);
         if (destinoLoja) await admin.from('estoque_motos').update({ loja_id: destinoLoja }).eq('avaliacao_id', avaliacaoId);
         if (tipo === 'compra') await admin.from('avaliacoes').update({ tipo_aquisicao: 'convertida' }).eq('id', avaliacaoId);
@@ -2577,7 +2646,47 @@ Deno.serve(async (req) => {
     if (!contratoConsig || contratoConsig.length === 0) {
       return jsonResponse({ error: 'O contrato do consignante ainda não foi gerado.' }, 409);
     }
+    // Nova consignação da transferência: só depois que a empresa atual devolveu a moto
+    // ao cliente (5918/6918 em produção, posterior à consignação vigente).
+    if (consigDestinoLojaId) {
+      const { data: devTransf } = await admin.from('nfe_entradas').select('created_at')
+        .eq('avaliacao_id', avaliacaoId).eq('operacao', 'devolucao_consignacao_transf')
+        .eq('status', 'processada').eq('ambiente', 'producao')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const devolvida = !!devTransf && (!consigAtual || new Date((devTransf as any).created_at).getTime() > new Date(consigAtual.created_at).getTime());
+      if (!devolvida) {
+        return jsonResponse({ error: 'Emita a devolução da consignação pela loja atual antes da nova consignação no destino.' }, 409);
+      }
+    }
+  } else if (tipo === 'devolucao_consignacao_transf') {
+    if (!consigAtual) {
+      return jsonResponse({ error: 'A NF-e de entrada em consignação ainda não foi emitida.' }, 409);
+    }
+    if (!destinoLojaIdBody) return jsonResponse({ error: 'destino_loja_id é obrigatório.' }, 400);
+    const { data: lojaDestinoDev } = await admin.from('loja_empresas').select('empresa_id').eq('id', destinoLojaIdBody).maybeSingle();
+    if (!lojaDestinoDev?.empresa_id) return jsonResponse({ error: 'Loja de destino sem empresa vinculada.' }, 400);
+    if (lojaDestinoDev.empresa_id === consigAtual.empresa_id) {
+      return jsonResponse({ error: 'A loja de destino é da mesma empresa que já está com a consignação.' }, 400);
+    }
+    // A consignação vigente não pode já ter sido devolvida (simbólica = vendida/convertida,
+    // ou outra transferência em andamento).
+    const { data: jaDevolvida } = await admin.from('nfe_entradas').select('id')
+      .eq('avaliacao_id', avaliacaoId).in('operacao', ['devolucao_consignacao', 'devolucao_consignacao_transf'])
+      .eq('status', 'processada').gt('created_at', consigAtual.created_at).limit(1).maybeSingle();
+    if (jaDevolvida) {
+      return jsonResponse({ error: 'A consignação atual desta moto já foi devolvida.' }, 409);
+    }
   } else if (tipo === 'devolucao_consignacao') {
+    // Devolvida ao cliente por uma transferência ainda sem a nova consignação: não há
+    // consignação vigente para devolver simbolicamente.
+    if (consigAtual) {
+      const { data: transfPendente } = await admin.from('nfe_entradas').select('id')
+        .eq('avaliacao_id', avaliacaoId).eq('operacao', 'devolucao_consignacao_transf')
+        .eq('status', 'processada').gt('created_at', consigAtual.created_at).limit(1).maybeSingle();
+      if (transfPendente) {
+        return jsonResponse({ error: 'Esta moto está em transferência: emita a nova consignação no destino antes.' }, 409);
+      }
+    }
     const { data: consignacaoOk } = await admin
       .from('nfe_entradas').select('id, ambiente').eq('avaliacao_id', avaliacaoId)
       .eq('operacao', 'consignacao').eq('status', 'processada').limit(1).maybeSingle();
@@ -2852,7 +2961,11 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'Emita a NF-e de compra da moto que entra como parte do pagamento em produção antes de emitir a venda.' }, 409);
       }
     }
-  } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao' && !(await foiDevolvida(nfeExistente.created_at))) {
+  } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao' && !(await foiDevolvida(nfeExistente.created_at))
+    // Devolução de uma transferência ANTERIOR de consignada (antes da consignação vigente)
+    // não bloqueia a devolução de uma nova transferência.
+    && !(tipo === 'devolucao_consignacao_transf' && consigAtual
+      && new Date(nfeExistente.created_at).getTime() < new Date(consigAtual.created_at).getTime())) {
     // Depois de produção autorizada, não reemite mais nem em homologação —
     // a menos que essa NF tenha sido devolvida (negócio desfeito, libera nova emissão).
     return jsonResponse({ error: 'Já existe uma NF-e emitida em produção para esta moto — contrato bloqueado.' }, 409);
@@ -3051,7 +3164,7 @@ Deno.serve(async (req) => {
     if (valorBody != null) {
       await admin.from('avaliacoes').update({ valor_consignacao_nota: valorBody }).eq('id', avaliacaoId);
     }
-  } else if (tipo === 'devolucao_consignacao') {
+  } else if (tipo === 'devolucao_consignacao' || tipo === 'devolucao_consignacao_transf') {
     // A devolução simbólica tem que devolver o MESMO valor da NF de entrada em
     // consignação já autorizada — não é editável na tela (evita divergir do que
     // a SEFAZ já tem registrado como recebido).
@@ -3172,6 +3285,15 @@ Deno.serve(async (req) => {
   if (ehTransferenciaEstoque || ehTransferenciaEstoque0km || tipo === 'transferencia') {
     const tipoNatureza = (tipo === 'transferencia' || tipo === 'transferencia_saida' || tipo === 'transferencia_saida_0km') ? 'saida' : 'entrada';
     operacaoCarregada = { ...operacaoCarregada, naturezas: operacaoCarregada.naturezas.filter((n) => n.tipo === tipoNatureza) };
+  }
+  // Devolução da transferência de consignada: sempre a devolução "de verdade" (5918/6918),
+  // como se o cliente tivesse desistido — nunca a simbólica (5919/6919) da venda.
+  if (tipo === 'devolucao_consignacao_transf') {
+    const naturezas918 = operacaoCarregada.naturezas.filter((n) => ['5918', '6918'].includes(String(n.cfop)));
+    if (!naturezas918.length) {
+      return jsonResponse({ error: 'Natureza de devolução de consignação (CFOP 5918/6918) não está ativa para esta empresa no SisFin.' }, 409);
+    }
+    operacaoCarregada = { ...operacaoCarregada, naturezas: naturezas918 };
   }
   // UF fiscal: a do cliente; na retirada presencial, a da empresa (operação interna).
   const ufCliente = (end.uf ?? '').trim().toUpperCase();
@@ -3415,7 +3537,7 @@ Deno.serve(async (req) => {
   // Devolução simbólica: referencia a chave de acesso da NF-e de entrada em
   // consignação (grupo NFref/refNFe — SEFAZ rejeita devolução sem isso).
   let notaReferenciada: string | null = null;
-  if (tipo === 'devolucao_consignacao') {
+  if (tipo === 'devolucao_consignacao' || tipo === 'devolucao_consignacao_transf') {
     const { data: nfConsignacao } = await admin
       .from('nfe_entradas').select('chave_nfe')
       .eq('avaliacao_id', avaliacaoId).eq('operacao', 'consignacao').eq('status', 'processada')
@@ -3558,7 +3680,7 @@ Deno.serve(async (req) => {
       focus_status: fStatus ?? `http_${r.httpStatus}`,
       erro_mensagem: errMsg,
       ...((tipo === 'transferencia_entrada' || tipo === 'transferencia_entrada_0km') ? { transferencia_par_id: saidaNfIdParaEntrada } : {}),
-      ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km || compraDestinoLojaId || (tipo === 'devolucao_consignacao' && destinoLojaIdBody)) ? { transferencia_destino_loja_id: destinoLojaIdBody || compraDestinoLojaId || null } : {}),
+      ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km || compraDestinoLojaId || consigDestinoLojaId || ((tipo === 'devolucao_consignacao' || tipo === 'devolucao_consignacao_transf') && destinoLojaIdBody)) ? { transferencia_destino_loja_id: destinoLojaIdBody || compraDestinoLojaId || consigDestinoLojaId || null } : {}),
     };
     if (atualizaExistente) {
       await admin.from('nfe_entradas').update(linhaErro).eq('id', nfeExistente.id);
@@ -3580,7 +3702,7 @@ Deno.serve(async (req) => {
     valor_total: valor,
     departamento,
     ...((tipo === 'transferencia_entrada' || tipo === 'transferencia_entrada_0km') ? { transferencia_par_id: saidaNfIdParaEntrada } : {}),
-    ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km || compraDestinoLojaId || (tipo === 'devolucao_consignacao' && destinoLojaIdBody)) ? { transferencia_destino_loja_id: destinoLojaIdBody || compraDestinoLojaId || null } : {}),
+    ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km || compraDestinoLojaId || consigDestinoLojaId || ((tipo === 'devolucao_consignacao' || tipo === 'devolucao_consignacao_transf') && destinoLojaIdBody)) ? { transferencia_destino_loja_id: destinoLojaIdBody || compraDestinoLojaId || consigDestinoLojaId || null } : {}),
     observacoes: observacoesNf,
     data_emissao: dataEmissao,
     data_entrada: dataEmissao,
@@ -3653,6 +3775,11 @@ Deno.serve(async (req) => {
     // até o destino confirmar o recebimento com a própria NF-e dela).
     if (tipo === 'transferencia_entrada' && destinoLojaIdBody) {
       await admin.from('estoque_motos').update({ loja_id: destinoLojaIdBody }).eq('avaliacao_id', avaliacaoId);
+    }
+    // Nova consignação da transferência de consignada: a moto passa para a loja de destino
+    // (continua consignada, agora com a empresa de destino).
+    if (tipo === 'consignacao' && consigDestinoLojaId) {
+      await admin.from('estoque_motos').update({ loja_id: consigDestinoLojaId }).eq('avaliacao_id', avaliacaoId);
     }
     // Compra da transferência de moto consignada: mesmo efeito da entrada, e a
     // moto passa a ser estoque próprio ('convertida', ver tipoAquisicao.ts).
