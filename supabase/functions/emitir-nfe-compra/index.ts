@@ -3610,7 +3610,8 @@ Deno.serve(async (req) => {
     icmsOrigem: icmsOrigemMoto,
     // Sem movimentação financeira real — devolução simbólica e transferência
     // pra MMATOS são as duas "saídas" sem pagamento de verdade do cliente.
-    semPagamentoReal: tipo === 'devolucao_consignacao' || tipo === 'transferencia'
+    // Devolução da transferência de consignada (5918/6918) também: SEFAZ exige "Sem Pagamento" [871].
+    semPagamentoReal: tipo === 'devolucao_consignacao' || tipo === 'devolucao_consignacao_transf' || tipo === 'transferencia'
       || tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km'
       || tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km',
   });
