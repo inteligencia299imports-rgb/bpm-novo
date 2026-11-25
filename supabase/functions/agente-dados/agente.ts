@@ -14,7 +14,7 @@ const MAX_VOLTAS = 14; // chamadas ao modelo por pergunta
 const MAX_TOKENS = 16_000; // folga para o conteúdo de um manual
 const LINHAS_PARA_O_MODELO = 150; // amostra devolvida ao modelo (o total vai junto)
 const MAX_CHARS_RESULTADO = 60_000;
-const AVISO_DEMORA_MS = 7_000;
+const AVISO_DEMORA_MS = 10_000; // "Um momento..." só se a resposta passar de 10 s
 
 /** Preço do Claude Opus 5.5 (US$ por token): entrada, saída, leitura e escrita de cache (5 min). */
 const PRECO = { entrada: 4 / 1e6, saida: 20 / 1e6, cacheLeitura: 0.2 / 1e6, cacheEscrita: 5 / 1e6 };
@@ -370,10 +370,12 @@ export async function rodarAgente(opts: {
     if (!r.respostaFinal && !botoesEnviados && !r.arquivos.length) {
       r.respostaFinal = 'Não consegui concluir essa análise agora. Pode reformular a pergunta ou reduzir o período?';
     }
+    // Resposta pronta: cancela o aviso antes de enviar (não manda "Um momento" junto com a resposta).
+    respondeu = true;
+    clearTimeout(aviso);
     if (r.respostaFinal && !botoesEnviados) {
       await conversa.texto(r.respostaFinal);
     }
-    respondeu = true;
     return r;
   } finally {
     clearTimeout(aviso);
