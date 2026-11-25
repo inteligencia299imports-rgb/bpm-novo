@@ -259,9 +259,12 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
     valorVendaReal = Number(estoque?.valor_venda ?? estoque?.preco ?? 0);
   } else {
     quantoVende = nz(avaliacao?.quanto_vende) ?? nz(estoque?.preco_acao) ?? nz(estoque?.preco) ?? nz(estoque?.valor_venda) ?? 0;
-    valorFechamento = nz(avaliacao?.valor_fechamento) ?? nz(consignanteV) ?? nz(contratoV)
+    // Custo da NF de entrada (0km) antes do contrato: o valor_fechamento do contrato de VENDA
+    // é o da moto dada na TROCA, não o custo da moto vendida (achado 2026-11-25, 0km com troca
+    // aparecia com o fechamento da troca no lugar dos R$ 95 mil da NF de entrada).
+    valorFechamento = nz(avaliacao?.valor_fechamento) ?? nz(custoProdutoEstoque) ?? nz(consignanteV) ?? nz(contratoV)
       ?? (tipo === 'consignada' ? nz(avaliacao?.avaliacao_consignacao) : nz(avaliacao?.avaliacao_compra))
-      ?? nz(custoProdutoEstoque) ?? 0;
+      ?? 0;
     valorVendaReal = Number(estoque?.valor_venda ?? estoque?.preco_acao ?? estoque?.preco ?? 0);
   }
 
