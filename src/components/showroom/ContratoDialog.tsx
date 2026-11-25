@@ -59,8 +59,13 @@ interface Props {
 const ehFinanciamento = (nome: string | null | undefined) =>
   String(nome ?? '').trim().toLowerCase() === 'financiamento';
 
+/** Forma "Crédito" (cartão): parcelável em até 24x (pedido do usuário 2026-11-25). */
+const ehCredito = (nome: string | null | undefined) =>
+  ['crédito', 'credito'].includes(String(nome ?? '').trim().toLowerCase());
+const MAX_PARCELAS_CREDITO = 24;
+
 /** Forma cujo nome é "Consórcio". */
-const ehConsorcio = (nome: string | null | undefined) =>
+const ehConsorcio =(nome: string | null | undefined) =>
   ['consórcio', 'consorcio'].includes(String(nome ?? '').trim().toLowerCase());
 
 /** Formas que se vinculam a uma instituição (banco / administradora) e têm observação editável. */
@@ -896,6 +901,11 @@ const ContratoDialog: React.FC<Props> = ({
       formaData.taxa_retorno_pct = parsePct(finTaxaRetorno);
     } else {
       formaData.valor_total = parseCurrencyInput(outroValor) || null;
+      if (ehCredito(novaFormaNome)) {
+        const n = Math.min(MAX_PARCELAS_CREDITO, Math.max(1, parseInt(finParcelas) || 1));
+        formaData.numero_parcelas = n;
+        formaData.valor_parcelas = formaData.valor_total != null ? Math.round((formaData.valor_total / n) * 100) / 100 : null;
+      }
     }
 
     if (ehInst && instSel) {
@@ -1239,7 +1249,9 @@ const ContratoDialog: React.FC<Props> = ({
         }
         return {
           tipo: f.tipo,
-          descricao: tipoLabel(f.tipo),
+          descricao: ehCredito(f.tipo) && (f.numero_parcelas ?? 1) > 1
+            ? `${tipoLabel(f.tipo)} em ${f.numero_parcelas}x de ${fmt(f.valor_parcelas)}`
+            : tipoLabel(f.tipo),
           valor: fmt(f.valor_total),
           financeira: f.financeira || '',
           dataPagamento,
@@ -2178,6 +2190,20 @@ const ContratoDialog: React.FC<Props> = ({
                     <CurrencyField label="Valor Total" value={outroValor} onChange={setOutroValor} />
                   )}
 
+                  {novaPagamentoTipo && ehCredito(novaFormaNome) && (
+                    <div className="max-w-[14rem] space-y-1.5">
+                      <label className="text-sm font-medium text-foreground">Nº de Parcelas</label>
+                      <Select value={finParcelas || '1'} onValueChange={setFinParcelas}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: MAX_PARCELAS_CREDITO }, (_, i) => (
+                            <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}x</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   {novaPagamentoTipo && (
                     <div className="max-w-[14rem] space-y-1.5">
                       <label className="text-sm font-medium text-foreground">Data do Pagamento <span className="text-destructive">*</span></label>
@@ -2257,7 +2283,12 @@ const ContratoDialog: React.FC<Props> = ({
                               {fp.valor_total != null && <div>Valor: {formatCurrency(fp.valor_total)}</div>}
                             </div>
                           ) : (
-                            fp.valor_total != null && <p className="text-xs text-muted-foreground">Valor: {formatCurrency(fp.valor_total)}</p>
+                            fp.valor_total != null && (
+                              <p className="text-xs text-muted-foreground">
+                                Valor: {formatCurrency(fp.valor_total)}
+                                {ehCredito(fp.tipo) && (fp.numero_parcelas ?? 1) > 1 && fp.valor_parcelas != null && ` (${fp.numero_parcelas}x de ${formatCurrency(fp.valor_parcelas)})`}
+                              </p>
+                            )
                           )}
                           {fp.data_pagamento && (
                             <p className="text-xs text-muted-foreground">
