@@ -137,9 +137,10 @@ const formatCpfCnpj = (value: string): string => {
   );
 };
 
-const CurrencyField = ({ label, value, onChange, required, disabled }: { label: string; value: string; onChange: (v: string) => void; required?: boolean; disabled?: boolean }) => (
+const CurrencyField = ({ label, value, onChange, required, disabled, descricao }: { label: string; value: string; onChange: (v: string) => void; required?: boolean; disabled?: boolean; descricao?: string }) => (
   <div>
     <label className="text-sm font-medium text-foreground">{label}{required && <span className="text-destructive ml-0.5">*</span>}</label>
+    {descricao && <p className="text-[11px] leading-tight text-muted-foreground">{descricao}</p>}
     <div className="relative mt-1">
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
       <Input
@@ -203,10 +204,11 @@ const formatPhone = (phone: string | null | undefined) => {
   return phone;
 };
 
-const InfoDisplay = ({ label, value, valueClassName }: { label: string; value: string | null | undefined; valueClassName?: string }) => (
+const InfoDisplay = ({ label, value, valueClassName, descricao }: { label: string; value: string | null | undefined; valueClassName?: string; descricao?: string }) => (
   value ? (
     <div>
       <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
+      {descricao && <p className="text-[11px] leading-tight text-muted-foreground">{descricao}</p>}
       <p className={cn('text-sm font-semibold', valueClassName)}>{value}</p>
     </div>
   ) : null
@@ -2005,10 +2007,10 @@ const ContratoDialog: React.FC<Props> = ({
                   <CardContent className="space-y-4 pt-4">
                     {soLeitura ? (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <InfoDisplay label="Valor de Fechamento" value={t.fechamento ? `R$ ${t.fechamento}` : '—'} />
-                        {podeTradeIn(t) && <InfoDisplay label="Trade-in" value={t.tradeIn ? `R$ ${t.tradeIn}` : '—'} />}
-                        <InfoDisplay label="Valor de Quitação" value={t.quitacao ? `R$ ${t.quitacao}` : '—'} />
-                        <InfoDisplay label="Valor Líquido" value={formatCurrency(abatimentoMotoTroca(t))} valueClassName="text-primary" />
+                        <InfoDisplay label="Valor de Fechamento" descricao="Valor avaliado da moto na troca" value={t.fechamento ? `R$ ${t.fechamento}` : '—'} />
+                        {podeTradeIn(t) && <InfoDisplay label="Trade-in" descricao="Bônus da Ducati na troca por 0km" value={t.tradeIn ? `R$ ${t.tradeIn}` : '—'} />}
+                        <InfoDisplay label="Valor de Quitação" descricao="Saldo de financiamento: desconta da avaliação" value={t.quitacao ? `R$ ${t.quitacao}` : '—'} />
+                        <InfoDisplay label="Valor Líquido" descricao="Valor final da moto: abate da venda" value={formatCurrency(abatimentoMotoTroca(t))} valueClassName="text-primary" />
                         {quitacaoTrocaNum(t) > 0 && (
                           <div className="col-span-full space-y-1">
                             <span className="text-sm font-medium text-foreground">Banco / Consórcio da Quitação</span>
@@ -2018,14 +2020,15 @@ const ContratoDialog: React.FC<Props> = ({
                       </div>
                     ) : (
                       <div className={cn('grid grid-cols-1 gap-4', podeTradeIn(t) ? 'sm:grid-cols-4' : 'sm:grid-cols-3')}>
-                        <CurrencyField label="Valor de Fechamento" value={t.fechamento} onChange={setTrocaValor(t.moto.id, 'fechamento')} required />
+                        <CurrencyField label="Valor de Fechamento" descricao="Valor avaliado da moto na troca" value={t.fechamento} onChange={setTrocaValor(t.moto.id, 'fechamento')} required />
                         {podeTradeIn(t) && (
-                          <CurrencyField label="Trade-in" value={t.tradeIn} onChange={setTrocaValor(t.moto.id, 'tradeIn')} />
+                          <CurrencyField label="Trade-in" descricao="Bônus da Ducati na troca por 0km" value={t.tradeIn} onChange={setTrocaValor(t.moto.id, 'tradeIn')} />
                         )}
-                        <CurrencyField label="Valor de Quitação" value={t.quitacao} onChange={setTrocaValor(t.moto.id, 'quitacao')} required />
+                        <CurrencyField label="Valor de Quitação" descricao="Saldo de financiamento: desconta da avaliação" value={t.quitacao} onChange={setTrocaValor(t.moto.id, 'quitacao')} required />
                         {/* Não editável — valor em azul no lugar do input. */}
                         <div className="text-center">
                           <span className="text-sm font-medium text-foreground">Valor Líquido</span>
+                          <p className="text-[11px] leading-tight text-muted-foreground">Valor final da moto: abate da venda</p>
                           <p className="mt-1 flex h-10 items-center justify-center text-sm font-semibold text-primary">{formatCurrency(abatimentoMotoTroca(t))}</p>
                         </div>
                         {quitacaoTrocaNum(t) > 0 && (
