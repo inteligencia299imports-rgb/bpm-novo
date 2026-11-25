@@ -207,8 +207,9 @@ async function consumoDoAgente(db: SupabaseClient, inp: any) {
 }
 
 /** Roda uma consulta pela porta somente leitura do banco. */
-async function consultar(db: SupabaseClient, sql: string, rh: boolean): Promise<Record<string, unknown>[]> {
-  const { data, error } = await db.rpc('agente_consultar', { _q: sql, _rh: rh });
+async function consultar(db: SupabaseClient, sql: string, rh: boolean, chave: string): Promise<Record<string, unknown>[]> {
+  // A alçada do usuário (sistemas e departamentos) é aplicada no banco, pelo papel dele.
+  const { data, error } = await db.rpc('agente_consultar', { _q: sql, _rh: rh, _chave: chave });
   if (error) throw new Error(error.message);
   return (data ?? []) as Record<string, unknown>[];
 }
@@ -231,10 +232,15 @@ export async function rodarAgente(opts: {
   conversa: Conversa;
   nome: string;
   rh: boolean;
+  /** Chave do telefone: define a alçada no banco. */
+  chave: string;
+  /** Sistemas liberados (null = todos) e se o HCM é só dos departamentos que gere. */
+  sistemas: string[] | null;
+  hcmSoDepartamentos: boolean;
   historico: Anthropic.MessageParam[];
   entrada: Anthropic.ContentBlockParam[];
 }): Promise<ResultadoAgente> {
-  const { db, conversa, nome, rh } = opts;
+  const { db, conversa, nome, rh, chave } = opts;
   const client = new Anthropic({ apiKey: Deno.env.get('AGENTE_ANTHROPIC_API_KEY') ?? Deno.env.get('ANTHROPIC_API_KEY') });
   const r: ResultadoAgente = {
     respostaFinal: '', consultas: [], arquivos: [], tokensEntrada: 0, tokensSaida: 0, tokensCacheLeitura: 0, tokensCacheEscrita: 0, custoUsd: 0,
@@ -251,7 +257,7 @@ export async function rodarAgente(opts: {
   // loop (o raciocínio de uma chamada fica preso a esse começo; mudar o horário a cada volta dava erro 400).
   const system: Anthropic.TextBlockParam[] = [
     { type: 'text', text: INSTRUCOES, cache_control: { type: 'ephemeral' } },
-    { type: 'text', text: contextoUsuario(nome, rh) },
+    { type: 'text', text: contextoUsuario(nome, rh, opts.sistemas, opts.hcmSoDepartamentos) },
   ];
   let botoesEnviados = false;
   try {
@@ -293,7 +299,7 @@ export async function rodarAgente(opts: {
           if (bloco.name === 'consultar_banco') {
             const sql = String(inp.sql ?? '');
             try {
-              const linhas = await consultar(db, sql, rh);
+              const linhas = await consultar(db, sql, rh, chave);
               r.consultas.push({ objetivo: inp.objetivo, sql, linhas: linhas.length, ms: Date.now() - t0 });
               resultados.push({ type: 'tool_result', tool_use_id: bloco.id, content: resumoResultado(linhas) });
             } catch (e) {
@@ -302,8 +308,8 @@ export async function rodarAgente(opts: {
             }
           } else if (bloco.name === 'estrutura_tabelas') {
             const nomes = (Array.isArray(inp.tabelas) ? inp.tabelas : []).map(String).filter((t: string) => /^[a-z0-9_]{1,63}$/.test(t)).slice(0, 10);
-            const sql = `select table_name as tabela, column_name as coluna, data_type as tipo from information_schema.columns where table_schema = 'public' and table_name in (${nomes.map((n: string) => `'${n}'`).join(', ') || "''"}) order by table_name, ordinal_position`;
-            const linhas = await consultar(db, sql, rh);
+            const sql = `select table_name as tabela, column_name as coluna, data_type as tipo from information_schema.columns where table_schema not in ('pg_catalog', 'information_schema', 'agente') and table_name in (${nomes.map((n: string) => `'${n}'`).join(', ') || "''"}) order by table_name, ordinal_position`;
+            const linhas = await consultar(db, sql, rh, chave);
             const porTabela: Record<string, string[]> = {};
             for (const l of linhas) (porTabela[String(l.tabela)] ??= []).push(`${l.coluna} (${l.tipo})`);
             const naoEncontradas = nomes.filter((n: string) => !porTabela[n]);
@@ -315,7 +321,7 @@ export async function rodarAgente(opts: {
             const sql = String(inp.sql ?? '');
             const titulo = String(inp.titulo ?? 'Relatório').slice(0, 120);
             const formato = inp.formato === 'pdf' ? 'pdf' : 'excel';
-            let linhas = await consultar(db, sql, rh);
+            let linhas = await consultar(db, sql, rh, chave);
             const cortado = linhas.length > 2000;
             if (cortado) linhas = linhas.slice(0, 2000);
             r.consultas.push({ objetivo: `arquivo: ${titulo}`, sql, linhas: linhas.length, ms: Date.now() - t0 });

@@ -148,7 +148,10 @@ Deno.serve(async (req) => {
       if (historico.length && historico[historico.length - 1].role === 'user') historico.pop();
 
       await conversa.digitando();
-      const r = await rodarAgente({ db, conversa, nome: usuario.nome, rh: !!usuario.rh, historico, entrada });
+      const r = await rodarAgente({
+        db, conversa, nome: usuario.nome, rh: !!usuario.rh, chave, historico, entrada,
+        sistemas: usuario.sistemas ?? null, hcmSoDepartamentos: !!usuario.hcm_so_departamentos,
+      });
 
       await db.from('agente_dados_mensagens').insert([
         { chave_telefone: chave, papel: 'user', conteudo: { texto: pergunta.slice(0, 4000) } },
