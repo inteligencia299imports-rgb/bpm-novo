@@ -29,11 +29,12 @@ export const ABA_PAPEIS: Record<string, string[]> = {
  * Abas que o perfil abre SEM tê-las no menu (pedido do usuário, 2026-11-25: "não
  * visualizar as abas não significa não ter acesso às etapas"). O gerente não vê
  * Pós-Venda, Intermediação, Pós-Compra e Consignação no menu, mas abre essas telas
- * pelas etapas da venda/compra e pelos atendimentos do NPS.
+ * pelas etapas da venda/compra e pelos atendimentos do NPS. O vendedor abre Pós-Venda e
+ * Intermediação só das PRÓPRIAS vendas (as telas filtram por vendedor_id).
  */
 export const ABA_ACESSO_SEM_MENU: Record<string, string[]> = {
-  pos_venda: ['gerente'],
-  intermediacao: ['gerente'],
+  pos_venda: ['gerente', 'vendedor'],
+  intermediacao: ['gerente', 'vendedor'],
   pos_compra: ['gerente'],
   consignacao: ['gerente'],
 };
