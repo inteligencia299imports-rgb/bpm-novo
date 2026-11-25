@@ -25,11 +25,29 @@ export const ABA_PAPEIS: Record<string, string[]> = {
   nps: ['master', 'gerente', 'avaliador', 'vendedor'],
 };
 
-export const podeAcessarAba = (aba: string, role: string | null | undefined): boolean =>
+/**
+ * Abas que o perfil abre SEM tê-las no menu (pedido do usuário, 2026-11-25: "não
+ * visualizar as abas não significa não ter acesso às etapas"). O gerente não vê
+ * Pós-Venda, Intermediação, Pós-Compra e Consignação no menu, mas abre essas telas
+ * pelas etapas da venda/compra e pelos atendimentos do NPS.
+ */
+export const ABA_ACESSO_SEM_MENU: Record<string, string[]> = {
+  pos_venda: ['gerente'],
+  intermediacao: ['gerente'],
+  pos_compra: ['gerente'],
+  consignacao: ['gerente'],
+};
+
+/** Aba aparece no menu (Sidebar/BottomNav) e serve de tela inicial. */
+export const abaNoMenu = (aba: string, role: string | null | undefined): boolean =>
   !!role && (ABA_PAPEIS[aba] || []).includes(role);
+
+/** Pode abrir a aba/tela (menu, link, etapas, NPS). */
+export const podeAcessarAba = (aba: string, role: string | null | undefined): boolean =>
+  abaNoMenu(aba, role) || (!!role && (ABA_ACESSO_SEM_MENU[aba] || []).includes(role));
 
 /** Tela inicial: Relatórios; sem acesso a ela, a primeira aba liberada para o perfil. */
 export const abaInicial = (role: string | null | undefined): string =>
-  podeAcessarAba('relatorios', role)
+  abaNoMenu('relatorios', role)
     ? 'relatorios'
-    : Object.keys(ABA_PAPEIS).find((aba) => podeAcessarAba(aba, role)) || 'relatorios';
+    : Object.keys(ABA_PAPEIS).find((aba) => abaNoMenu(aba, role)) || 'relatorios';

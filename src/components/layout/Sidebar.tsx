@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { podeAcessarAba } from '@/lib/abasPermissao';
+import { abaNoMenu } from '@/lib/abasPermissao';
 import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, Award, LogOut, BarChart3, Camera } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
 import NotificationBell from './NotificationBell';
@@ -38,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
     { id: 'preparacao', label: 'Preparação', icon: Wrench },
     { id: 'publicacoes', label: 'Publicações', icon: Camera },
     { id: 'nps', label: 'NPS', icon: Award },
-  ].filter(t => podeAcessarAba(t.id, role));
+  ].filter(t => abaNoMenu(t.id, role));
 
   return (
     <aside className={`hidden md:flex flex-col h-screen sticky top-0 bg-sidebar text-sidebar-foreground shadow-card transition-all duration-300 ${collapsed ? 'w-16' : 'w-52'}`}>
