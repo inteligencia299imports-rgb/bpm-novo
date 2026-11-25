@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { podeAcessarAba } from '@/lib/abasPermissao';
+import { abaNoMenu } from '@/lib/abasPermissao';
 import { Bike, ClipboardCheck, Package, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, Award, BarChart3, Camera } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -26,7 +26,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
     { id: 'preparacao', label: 'Preparação', icon: Wrench },
     { id: 'publicacoes', label: 'Publicações', icon: Camera },
     { id: 'nps', label: 'NPS', icon: Award },
-  ].filter(t => podeAcessarAba(t.id, role));
+  ].filter(t => abaNoMenu(t.id, role));
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card safe-area-bottom overflow-x-auto">
