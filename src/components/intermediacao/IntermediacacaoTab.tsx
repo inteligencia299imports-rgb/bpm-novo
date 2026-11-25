@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
 import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 type Parte = 'parte1' | 'parte2';
@@ -29,6 +30,9 @@ interface IntermediacacaoTabProps {
 }
 
 const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandled, onNavigateToShowroom, onNavigateToNps }: IntermediacacaoTabProps = {}) => {
+  // Vendedor abre a Intermediação só das próprias vendas (acesso sem menu, 2026-11-25).
+  const { user, role } = useAuth();
+  const soVendedor = role === 'vendedor' ? (user?.id || '-') : null;
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -47,7 +51,9 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     if (initialAtendimentoId) {
       supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`).eq('id', initialAtendimentoId).single().then(async ({ data: raw }) => {
         const data = flattenMarcaModelo(raw as any);
-        if (data) {
+        if (data && soVendedor && (data as any).vendedor_id !== soVendedor) {
+          toast.error('Esta venda é de outro vendedor.');
+        } else if (data) {
           const { data: estRow } = await supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).eq('atendimento_venda_id', data.id).maybeSingle();
           const est = estRow ? mapEstoqueMoto(estRow, await fetchLojaMap()) : null;
           setSelectedItem({ ...data, loja: (data as any).loja_empresas?.loja, _estoqueMoto: est && est.tipo === 'consignada' ? est : null });
@@ -55,7 +61,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       });
       onInitialHandled?.();
     }
-  }, [initialAtendimentoId]);
+  }, [initialAtendimentoId, soVendedor]);
 
   const config = PARTE_CONFIG[parte];
 
@@ -67,7 +73,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     ]);
     estRes.data = (estRes.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)).filter((e: any) => e.tipo === 'consignada');
 
-    const result = await fetchAllRange<any>(() => supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`).eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+    const result = await fetchAllRange<any>(() => supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`).eq('situacao', 'vendido').order('updated_at', { ascending: false }).match(soVendedor ? { vendedor_id: soVendedor } : {}));
     const atError = result.error;
     const atData = result.data || [];
     if (atError) { toast.error('Erro ao carregar intermediação'); setLoading(false); return; }
@@ -186,7 +192,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
     setItems(filtered);
     setLoading(false);
-  }, [search, parte, filterCidade]);
+  }, [search, parte, filterCidade, soVendedor]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 

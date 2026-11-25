@@ -9,6 +9,7 @@ import type { PosVendaStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
 import VendaProcessoView from '@/components/vendas/VendaProcessoView';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { nfeTagFromRows } from '@/lib/nfeTag';
@@ -40,6 +41,9 @@ const ATENDIMENTOS_OCULTOS_POS_VENDA = new Set<string>([
 const KANBAN_COLUMNS = POS_VENDA_COLUMNS.filter(c => c.value !== 'aguardando_aprovacao' && c.value !== 'aprovada');
 
 const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCompra, onNavigateToShowroom, onNavigateToNps }: PosVendaTabProps = {}) => {
+  // Vendedor abre o Pós-Venda só das próprias vendas (acesso sem menu, 2026-11-25).
+  const { user, role } = useAuth();
+  const soVendedor = role === 'vendedor' ? (user?.id || '-') : null;
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -55,7 +59,9 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     if (initialAtendimentoId) {
       supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`).eq('id', initialAtendimentoId).single().then(async ({ data: raw }) => {
         const data = flattenMarcaModelo(raw as any);
-        if (data) {
+        if (data && soVendedor && (data as any).vendedor_id !== soVendedor) {
+          toast.error('Esta venda é de outro vendedor.');
+        } else if (data) {
           // Fetch estoque moto info (seminova ou 0km)
           const lojaMap = await fetchLojaMap();
           const [{ data: estRow }, { data: estNovaRow }] = await Promise.all([
@@ -68,7 +74,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       });
       onInitialHandled?.();
     }
-  }, [initialAtendimentoId]);
+  }, [initialAtendimentoId, soVendedor]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -77,6 +83,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     // Colunas de aprovação são um eixo separado (venda_aprovacao_status), não pos_venda_status.
     const statuses = POS_VENDA_COLUMNS.map(c => c.value).filter(v => v !== 'aguardando_aprovacao' && v !== 'aprovada');
     const AT_SELECT = `*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`;
+    const soMinhas = (q: any) => (soVendedor ? q.eq('vendedor_id', soVendedor) : q);
     const [estResRaw, estNovasRaw, lojaMap, nfeResult, nfeDevolucaoResult, etapaNfResult] = await Promise.all([
       fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).not('atendimento_venda_id', 'is', null)),
       supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).not('atendimento_venda_id', 'is', null),
@@ -119,13 +126,13 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     let atData: any[];
     let atError: any;
     if (isSearching) {
-      const result = await fetchAllRange(() => supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+      const result = await fetchAllRange(() => soMinhas(supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido')).order('updated_at', { ascending: false }));
       atError = result.error;
       atData = result.data || [];
     } else {
       const statusResults = await Promise.all([
-        ...statuses.map(s => supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)),
-        (supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido') as any).eq('venda_aprovacao_status', 'aprovada').order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT),
+        ...statuses.map(s => soMinhas(supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido')).eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)),
+        (soMinhas(supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido')) as any).eq('venda_aprovacao_status', 'aprovada').order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT),
       ]);
       atError = statusResults.find(r => r.error)?.error;
       const seen = new Set<string>();
@@ -180,7 +187,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     filtered = filtered.filter((a: any) => !ATENDIMENTOS_OCULTOS_POS_VENDA.has(a.id));
     setItems(filtered);
     setLoading(false);
-  }, [search, filterCidade]);
+  }, [search, filterCidade, soVendedor]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
   const columnOf = (a: any): PosVendaStatus | null => {
