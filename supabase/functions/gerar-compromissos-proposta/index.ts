@@ -76,6 +76,15 @@ function addDias(base: string | null | undefined, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** yyyy-mm-dd + N meses, no mesmo dia (31/01 + 1 mês = 28/02 ou 29/02). */
+function addMeses(base: string, meses: number): string {
+  const [y, m, d] = base.slice(0, 10).split('-').map(Number);
+  const alvo = new Date(Date.UTC(y, m - 1 + meses, 1));
+  const ultimoDia = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(d, ultimoDia));
+  return alvo.toISOString().slice(0, 10);
+}
+
 const obsMoto = (marca?: string | null, modelo?: string | null, placa?: string | null): string | null => {
   const desc = [marca, modelo].filter(Boolean).join(' ').trim();
   const placaFmt = String(placa ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
@@ -496,12 +505,13 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
 
   const { data: formas } = await admin
     .from('formas_pagamento_contrato')
-    .select('tipo, forma_pagamento_id, valor_total, valor_entrada, valor_financiado, data_pagamento')
+    .select('tipo, forma_pagamento_id, valor_total, valor_entrada, valor_financiado, data_pagamento, numero_parcelas')
     .eq('contrato_id', contratoVenda.id)
     .order('created_at', { ascending: true });
 
   const vencPadrao = addDias(contratoVenda.data_sinal, DIAS_VENCIMENTO);
   const ehFinanciamento = (t?: string | null) => String(t ?? '').toLowerCase().includes('financiamento');
+  const ehCredito = (t?: string | null) => ['crédito', 'credito'].includes(String(t ?? '').trim().toLowerCase());
   const parcelas: Parcela[] = [];
   let n = 0;
   // A entrada do financiamento é informativa no contrato (o Valor Faltante só
@@ -524,7 +534,24 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
       if (financiado > 0) parcelas.push({ numero_parcela: ++n, valor: financiado, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: venc });
     } else {
       const total = nz(f.valor_total);
-      if (total > 0) parcelas.push({ numero_parcela: ++n, valor: total, tipo: 'unico', forma_pagamento_id: f.forma_pagamento_id ?? FORMA_PAGAMENTO_ID, data_vencimento: venc });
+      // Crédito parcelado (até 24x): uma parcela por mês a partir da data do pagamento, a
+      // última absorve o arredondamento — mesma grade do CRM e do lançamento no SisFin.
+      const qtd = ehCredito(f.tipo) ? Math.min(24, Math.max(1, Math.floor(nz(f.numero_parcelas)) || 1)) : 1;
+      if (total > 0 && qtd > 1) {
+        const base = Math.floor((total / qtd) * 100) / 100;
+        const ultima = Math.round((total - base * (qtd - 1)) * 100) / 100;
+        for (let i = 0; i < qtd; i++) {
+          parcelas.push({
+            numero_parcela: ++n,
+            valor: i === qtd - 1 ? ultima : base,
+            tipo: 'parcelado',
+            forma_pagamento_id: f.forma_pagamento_id ?? FORMA_PAGAMENTO_ID,
+            data_vencimento: addMeses(venc, i),
+          });
+        }
+      } else if (total > 0) {
+        parcelas.push({ numero_parcela: ++n, valor: total, tipo: 'unico', forma_pagamento_id: f.forma_pagamento_id ?? FORMA_PAGAMENTO_ID, data_vencimento: venc });
+      }
     }
   }
 
