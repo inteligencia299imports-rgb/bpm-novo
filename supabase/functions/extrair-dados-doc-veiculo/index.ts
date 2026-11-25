@@ -238,9 +238,13 @@ Deno.serve(async (req) => {
         .filter(([a, b]) => a && b);
       const algumIgual = pares.some(([a, b]) => a === b);
       const algumDifere = pares.some(([a, b]) => a !== b);
+      // O código de segurança do CRV do ATPV-e é a fonte certa para a entrada no RENAVE: o que
+      // já está na avaliação costuma vir do CRLV ("código de segurança do CLA", outro número) e a
+      // SERPRO rejeita. Se o texto não trouxe o código, a IA lê o documento (caso SXZ6B32,
+      // 2026-11-25: OCR sem o código + CLA salvo = entrada rejeitada).
       const falta = tipo === 'atpv' && (
         (!lidoOcr.numero_crv && !acesso.numero_crv)
-        || (!lidoOcr.codigo_seguranca_crv && !acesso.codigo_seguranca_crv)
+        || !lidoOcr.codigo_seguranca_crv
         || (!lidoOcr.data_assinatura_vendedor && !acesso.atpv_data_assinatura)
       );
       if (algumIgual && !algumDifere && !falta) {
