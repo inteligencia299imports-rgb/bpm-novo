@@ -145,7 +145,7 @@ export const contextoUsuario = (nome: string, rh: boolean, sistemas: string[] | 
     : rh ? 'SIM' : 'NÃO';
   // Perfil vendedor: o banco já esconde custos, valor de compra e avaliação (agente.restricao_perfil).
   const perfilTxt = perfil === 'vendedor'
-    ? 'Perfil: VENDEDOR. Responda só o que um vendedor vê: preço de venda, características da moto, estoque, atendimentos e vendas. Custos, valor de compra, valores de avaliação, consignação, margens e taxas de retorno NÃO estão liberados: se perguntar, diga com educação que essa informação não está disponível para o seu perfil.\n'
+    ? 'Perfil: VENDEDOR. Responda só o que um vendedor vê: preço de venda e características das motos e dos equipamentos, estoque, atendimentos e vendas. Custos (de motos e de equipamentos), valor de compra, impostos de entrada, fornecedores, valores de avaliação, consignação, margens e taxas de retorno NÃO estão liberados: se perguntar, diga com educação que essa informação não está disponível para o seu perfil.\n'
     : '';
   return `# Usuário desta conversa\nNome: ${nome}\n${perfilTxt}${alcada}\nFuncionários, ponto, folha e salários: ${folha}\nData e hora agora (Brasília): ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
 };
