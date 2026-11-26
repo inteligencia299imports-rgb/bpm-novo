@@ -704,13 +704,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           const tabela = (mi as any).estoque_tipo === '0km' ? 'estoque_motos_novas' : 'estoque_motos';
           console.log('[Estoque Update]', tabela, 'moto_id:', mi.estoque_moto_id, 'update:', estoqueUpdate);
           estoquePromises.push(
-            supabase.from(tabela).update(estoqueUpdate).eq('id', mi.estoque_moto_id)
+            supabase.from(tabela).update(estoqueUpdate).eq('id', mi.estoque_moto_id).select('id')
               .then(r => {
                 if (r.error) {
                   console.error('[Estoque Update ERROR]', r.error);
                   toast.error(`Erro ao atualizar estoque: ${r.error.message}`);
-                } else {
-                  console.log('[Estoque Update OK] rows affected:', r.count);
+                } else if (!r.data?.length) {
+                  // Sem permissão o banco não dá erro, só não grava (caso RAW8J82, 2026-11-26).
+                  toast.error('A moto não foi marcada no estoque (sem permissão). Avise o gerente da loja ou o setor de Inteligência.');
                 }
                 return r;
               })
