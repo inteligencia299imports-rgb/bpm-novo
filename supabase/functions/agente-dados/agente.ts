@@ -236,6 +236,8 @@ export async function rodarAgente(opts: {
   /** Sistemas liberados (null = todos) e se o HCM é só dos departamentos que gere. */
   sistemas: string[] | null;
   hcmSoDepartamentos: boolean;
+  /** Perfil de acesso (ex.: "vendedor": sem custos, valor de compra e avaliação). */
+  perfil?: string | null;
   historico: Anthropic.MessageParam[];
   entrada: Anthropic.ContentBlockParam[];
 }): Promise<ResultadoAgente> {
@@ -250,7 +252,7 @@ export async function rodarAgente(opts: {
   // loop (o raciocínio de uma chamada fica preso a esse começo; mudar o horário a cada volta dava erro 400).
   const system: Anthropic.TextBlockParam[] = [
     { type: 'text', text: INSTRUCOES, cache_control: { type: 'ephemeral' } },
-    { type: 'text', text: contextoUsuario(nome, rh, opts.sistemas, opts.hcmSoDepartamentos) },
+    { type: 'text', text: contextoUsuario(nome, rh, opts.sistemas, opts.hcmSoDepartamentos, opts.perfil ?? null) },
   ];
   let botoesEnviados = false;
   for (let volta = 0; volta < MAX_VOLTAS; volta++) {
