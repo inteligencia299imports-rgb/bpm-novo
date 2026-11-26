@@ -324,10 +324,14 @@ export function comoRegrasPorImposto(op: OperacaoCarregada, e: RegraEscolhida, i
   //      pRedBC (alíquota cheia + base reduzida); a redução/cBenef da regra, quando houver, vence;
   //  (2) venda INTERESTADUAL: o DIFAL usa a carga efetiva do destino, nunca abaixo da interestadual
   //      (DIFAL zero, nunca negativo). Não vale no ICMS-ST retido (CST 60).
-  const reducaoNcm = interna && r.icms_cst === "00" && r.icms_destaca !== false && num(r.icms_reducao_bc) == null && (destino.reducao ?? 0) > 0;
+  //  (3) só para PJ CONTRIBUINTE do ICMS (decisão do usuário, 2026-11-26 — VND-R-1878): PF e PJ não
+  //      contribuinte saem sem a redução (CST 00, alíquota cheia) e o DIFAL deles usa a interna cheia
+  //      do destino. Emissor que não informa o destinatário (destinatarioTipo null) mantém a redução.
+  const reducaoDestino = item.destinatarioTipo == null || item.destinatarioTipo === "pj_contribuinte" ? destino.reducao : null;
+  const reducaoNcm = interna && r.icms_cst === "00" && r.icms_destaca !== false && num(r.icms_reducao_bc) == null && (reducaoDestino ?? 0) > 0;
   const internaDestino = interna
     ? destino.interna
-    : (() => { const c = cargaEfetiva(destino.interna, destino.reducao); return c != null && pICMS != null && destino.reducao ? Math.max(c, pICMS) : c; })();
+    : (() => { const c = cargaEfetiva(destino.interna, reducaoDestino); return c != null && pICMS != null && reducaoDestino ? Math.max(c, pICMS) : c; })();
   const comum = {
     destino_ufs: [uf], tipo_atendimento: "ambos", origem_mercadoria: r.origem_mercadoria,
     produto_tipo: r.produto_ncms.length ? "ncm" : "todos", produto_ncms: r.produto_ncms, produto_categorias: r.produto_categorias,
