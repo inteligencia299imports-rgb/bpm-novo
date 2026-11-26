@@ -45,7 +45,9 @@
 // sai sem certificado (SERPRO rejeita com 401 em produção — falha segura,
 // nunca usa o certificado de outro CNPJ por engano).
 
-const DEFAULT_BASE = 'https://hom.renave.estaleiro.serpro.gov.br/renave-ws';
+import { X509Certificate } from 'node:crypto';
+
+const DEFAULT_BASE ='https://hom.renave.estaleiro.serpro.gov.br/renave-ws';
 const MAX_CNPJ_SLOTS = 20;
 
 export interface RenaveResp {
@@ -120,6 +122,43 @@ function buildClient(cnpjEstabelecimento?: string | null): { client: unknown | u
   return { client, base };
 }
 
+function fmtCnpj(d: string): string {
+  return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : d;
+}
+
+/** Titular e validade do certificado (1º do PEM), pra diagnóstico — nunca expõe a chave. */
+function descreverCertificado(certPem: string): { titular: string; validoAte: Date | null } | null {
+  try {
+    const m = certPem.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/);
+    if (!m) return null;
+    const x = new X509Certificate(m[0]);
+    const cn = /CN=([^\n,]+)/.exec(x.subject)?.[1]?.trim() ?? x.subject.replace(/\n/g, ', ');
+    const validoAte = x.validTo ? new Date(x.validTo) : null;
+    return { titular: cn, validoAte: validoAte && !isNaN(validoAte.getTime()) ? validoAte : null };
+  } catch (e) {
+    console.warn('renave: não foi possível ler o certificado', e);
+    return null;
+  }
+}
+
+function mensagem401(cnpjEstabelecimento: string | null | undefined, comCertificado: boolean): string {
+  const cnpj = cnpjEstabelecimento ? cnpjEstabelecimento.replace(/\D/g, '') : '';
+  const quem = cnpj ? `do CNPJ ${fmtCnpj(cnpj)}` : 'padrão';
+  if (!comCertificado) {
+    return `RENAVE recusou a autenticação (401): não há certificado digital configurado ${quem}. Cadastre o e-CNPJ desse estabelecimento nos secrets RENAVE_CNPJ_n/RENAVE_CERT_PEM_n/RENAVE_KEY_PEM_n.`;
+  }
+  const par = cnpj ? candidatosCertificados().find((c) => c.cnpj === cnpj) : candidatosCertificados()[0];
+  const info = par ? descreverCertificado(par.cert) : null;
+  let detalhe = '';
+  if (info) {
+    const venc = info.validoAte ? info.validoAte.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '?';
+    const vencido = info.validoAte && info.validoAte.getTime() < Date.now() ? ' — VENCIDO' : '';
+    const outroCnpj = cnpj && !info.titular.replace(/\D/g, '').includes(cnpj) ? ' — o titular NÃO corresponde a esse CNPJ' : '';
+    detalhe = ` Certificado usado: "${info.titular}", válido até ${venc}${vencido}${outroCnpj}.`;
+  }
+  return `RENAVE recusou o certificado digital ${quem} (401 — vencido, de outro CNPJ ou não habilitado na SERPRO).${detalhe} Atualize o e-CNPJ correto desse estabelecimento nos secrets do RENAVE.`;
+}
+
 async function registrarChamada(
   ctx: RenaveLogCtx | undefined,
   info: { endpoint: string; metodo: string; requestBody: unknown; status: number; responseBody: unknown; erro: string | null },
@@ -186,6 +225,13 @@ async function call(
   const text = await res.text();
   let body: any = {};
   try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
+  // Achado real 2026-11-26 (FLN, chassi 95V6A04AASM000538): 401 da SERPRO vem
+  // só com "No message available" — o usuário não tem como saber que o
+  // problema é o certificado. Troca por uma mensagem que diz qual
+  // certificado foi usado (titular e validade; nunca a chave).
+  if (res.status === 401 && body && typeof body === 'object' && !Array.isArray(body)) {
+    body = { ...body, mensagemParaUsuarioFinal: mensagem401(opts.ctx?.cnpjEstabelecimento, !!client) };
+  }
   const resp: RenaveResp = { status: res.status, body };
   await registrarChamada(opts.ctx, {
     endpoint: path,
