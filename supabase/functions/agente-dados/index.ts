@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       await conversa.digitando();
       const r = await rodarAgente({
         db, conversa, nome: usuario.nome, rh: !!usuario.rh, chave, historico, entrada,
-        sistemas: usuario.sistemas ?? null, hcmSoDepartamentos: !!usuario.hcm_so_departamentos,
+        sistemas: usuario.sistemas ?? null, hcmSoDepartamentos: !!usuario.hcm_so_departamentos, perfil: usuario.perfil ?? null,
       });
 
       await db.from('agente_dados_mensagens').insert([

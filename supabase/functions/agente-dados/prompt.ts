@@ -135,7 +135,7 @@ const NOME_SISTEMA: Record<string, string> = {
   bpm: 'BPM (Motos)', crm: 'CRM (Equipamentos)', ofc: 'OFC (Oficina)', sisfin: 'SISFIN (Financeiro)',
   mini: 'MINI (Minimotos)', hcm: 'HCM (RH)', ponto: 'PONTO',
 };
-export const contextoUsuario = (nome: string, rh: boolean, sistemas: string[] | null = null, hcmSoDepartamentos = false) => {
+export const contextoUsuario = (nome: string, rh: boolean, sistemas: string[] | null = null, hcmSoDepartamentos = false, perfil: string | null = null) => {
   const alcada = sistemas
     ? `Sistemas liberados: ${sistemas.map((s) => NOME_SISTEMA[s] ?? s).join(', ')}, além de NPS e cadastros gerais (empresas, lojas, clientes).`
       + ` Perguntas sobre outros sistemas: diga, com educação, que a informação não está liberada para o seu perfil, sem citar detalhes.`
@@ -143,5 +143,9 @@ export const contextoUsuario = (nome: string, rh: boolean, sistemas: string[] | 
   const folha = hcmSoDepartamentos
     ? 'SIM, só dos departamentos que você gere no HCM (o banco já filtra; se vier vazio, diga que não há dados liberados para esse departamento).'
     : rh ? 'SIM' : 'NÃO';
-  return `# Usuário desta conversa\nNome: ${nome}\n${alcada}\nFuncionários, ponto, folha e salários: ${folha}\nData e hora agora (Brasília): ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
+  // Perfil vendedor: o banco já esconde custos, valor de compra e avaliação (agente.restricao_perfil).
+  const perfilTxt = perfil === 'vendedor'
+    ? 'Perfil: VENDEDOR. Responda só o que um vendedor vê: preço de venda, características da moto, estoque, atendimentos e vendas. Custos, valor de compra, valores de avaliação, consignação, margens e taxas de retorno NÃO estão liberados: se perguntar, diga com educação que essa informação não está disponível para o seu perfil.\n'
+    : '';
+  return `# Usuário desta conversa\nNome: ${nome}\n${perfilTxt}${alcada}\nFuncionários, ponto, folha e salários: ${folha}\nData e hora agora (Brasília): ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
 };
