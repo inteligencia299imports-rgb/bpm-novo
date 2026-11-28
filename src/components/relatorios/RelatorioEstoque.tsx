@@ -162,9 +162,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       estoqueTipo = estoqueTipo.filter((m: any) => tipos.some((t) => {
         const tipo = tipoExibicaoEstoque(m);
         if (t === 'test_ride' || t === '0km') return tipo === t;
-        // Próprias = própria/repasse/convertida (m.tipo já agrupa) + Test-Ride (0km ou seminova): test-ride
-        // conta como seminova própria (pedido do usuário, 2026-11-24) e continua sozinha em Test-Ride.
-        if (t === 'propria' && tipo === 'test_ride') return true;
+        // Próprias = própria/repasse/convertida (m.tipo já agrupa). Test-Ride (0km ou seminova) NÃO
+        // conta como própria — só aparece no filtro Test-Ride (pedido do usuário, 2026-11-28,
+        // revertendo o de 2026-11-24). Vale para indicadores, listagem e exportação.
         return tipo !== 'test_ride' && m.tipo === t;
       }));
     }
@@ -178,7 +178,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     // Em Preparação segue os filtros de loja e tipo (não os de Situação/Quitação/BIN, que são do
     // estoque). Moto em preparação é sempre seminova: o filtro só de 0KM não traz nenhuma.
     const tiposFiltro = filterTipo === 'todos' ? null : filterTipo.split(',');
-    const prepFiltrado = prepRows.filter((a: any) => passaLojaFiltro(a.loja) && (!tiposFiltro || tiposFiltro.includes(a.tipo) || (a.tipo === 'test_ride' && tiposFiltro.includes('propria'))));
+    const prepFiltrado = prepRows.filter((a: any) => passaLojaFiltro(a.loja) && (!tiposFiltro || tiposFiltro.includes(a.tipo)));
     // Situação, Quitação e BIN valem para os indicadores e para a listagem.
     if (filterSituacao !== 'todos') {
       const situacoes = filterSituacao.split(',');
