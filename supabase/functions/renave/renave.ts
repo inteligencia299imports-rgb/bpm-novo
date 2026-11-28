@@ -153,9 +153,7 @@ function mensagem401(cnpjEstabelecimento: string | null | undefined, comCertific
   if (info) {
     const venc = info.validoAte ? info.validoAte.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '?';
     const vencido = info.validoAte && info.validoAte.getTime() < Date.now() ? ' — VENCIDO' : '';
-    // Mesma raiz (8 primeiros dígitos) = matriz/filial — o e-CNPJ da FLN
-    // (matriz) também vale pra POA (filial). Só acusa raiz diferente.
-    const outroCnpj = cnpj && !info.titular.replace(/\D/g, '').includes(cnpj.slice(0, 8)) ? ' — o titular é de OUTRO grupo de CNPJ' : '';
+    const outroCnpj = cnpj && !info.titular.replace(/\D/g, '').includes(cnpj) ? ' — o titular NÃO corresponde a esse CNPJ' : '';
     detalhe = ` Certificado usado: "${info.titular}", válido até ${venc}${vencido}${outroCnpj}.`;
   }
   return `RENAVE recusou o certificado digital ${quem} (401 — vencido, de outro CNPJ ou não habilitado na SERPRO).${detalhe} Atualize o e-CNPJ correto desse estabelecimento nos secrets do RENAVE.`;
